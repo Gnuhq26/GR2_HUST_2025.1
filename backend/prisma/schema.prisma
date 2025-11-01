@@ -10,6 +10,88 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Store {
+  StoreID Int @id @default(autoincrement())
+  StoreName String @db.VarChar(255)
+  Subdomain String @unique @db.VarChar(100)
+  Phone String? @db.VarChar(20)
+  Address String? @db.VarChar(500)
+  Status String @default("Active") @db.VarChar(50)
+  CreatedAt DateTime @default(now()) @db.Timestamp(0)
+
+  // Relations
+  roles Role[]
+  storeUsers StoreUser[]
+}
+
+model Role {
+  RoleID Int @id @default(autoincrement())
+  StoreID Int
+  RoleName String @db.VarChar(100)
+  Description String? @db.VarChar(255)
+  CreatedAt DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store Store @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  storeUsers StoreUser[]
+  rolePermissions RolePermission[]
+
+  @@unique([StoreID, RoleName])
+}
+
+model Permission {
+  PermissionID Int @id @default(autoincrement())
+  Action String @db.VarChar(100)
+  Subject String @db.VarChar(100)
+  CreatedAt DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  RoleID Int
+  PermissionID Int
+  CreatedAt DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  role Role @relation(fields: [RoleID], references: [RoleID], onDelete: Cascade)
+  permission Permission @relation(fields: [PermissionID], references: [PermissionID], onDelete: Cascade)
+
+  @@id([RoleID, PermissionID])
+}
+
+model User {
+  UserID Int @id @default(autoincrement())
+  Email String @unique @db.VarChar(255)
+  PasswordHash String @db.VarChar(255)
+  FullName String? @db.VarChar(100)
+  Phone String? @db.VarChar(20)
+  Address String? @db.VarChar(255)
+  CreatedAt DateTime @default(now()) @db.Timestamp(0)
+
+  // Relations
+  storeUsers StoreUser[]
+}
+
+model StoreUser {
+  StoreID Int
+  UserID Int
+  RoleID Int
+  CreatedAt DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store Store @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  user User @relation(fields: [UserID], references: [UserID], onDelete: Cascade)
+  role Role @relation(fields: [RoleID], references: [RoleID], onDelete: Restrict)
+
+  @@id([StoreID, UserID])
 }
