@@ -10,7 +10,8 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
+  // Connection URL moved to prisma.config.ts; configure the connection for Migrate and PrismaClient there.
+  // See https://pris.ly/d/config-datasource and https://pris.ly/d/prisma7-client-config
 }
 
 model Store {
