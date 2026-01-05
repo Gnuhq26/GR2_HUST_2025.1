@@ -10,7 +10,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-      signOptions: { expiresIn: '7d' },
+      signOptions: { expiresIn: '1d' },
     }),
   ],
   controllers: [AuthController],

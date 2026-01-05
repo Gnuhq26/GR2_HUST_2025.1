@@ -3,13 +3,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaClient } from '@prisma/client';
+import { JwtPayload } from '../auth.service';
 
 const prisma = new PrismaClient();
-
-export interface JwtPayload {
-  sub: number; // UserID
-  email: string;
-}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -41,6 +37,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    // Return user with stores information from JWT payload
+    return {
+      ...user,
+      stores: payload.stores,
+    };
   }
 }

@@ -10,6 +10,18 @@ import { LoginDto, RegisterDto } from './dto';
 
 const prisma = new PrismaClient();
 
+export interface JwtPayload {
+  sub: number;
+  email: string;
+  stores: Array<{
+    storeId: number;
+    storeName: string;
+    subdomain: string;
+    roleId: number;
+    roleName: string;
+  }>;
+}
+
 @Injectable()
 export class AuthService {
   constructor(private jwtService: JwtService) {}
@@ -48,8 +60,11 @@ export class AuthService {
       },
     });
 
+    // Get user stores and roles
+    const stores = await this.getUserStores(user.UserID);
+
     // Generate JWT token
-    const token = this.generateToken(user.UserID, user.Email);
+    const token = this.generateToken(user.UserID, user.Email, stores);
 
     return {
       user,
@@ -60,7 +75,38 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    // Find user
+    // Validate user credentials
+    const user = await this.validateUser(email, password);
+
+    // Get user stores and roles
+    const stores = await this.getUserStores(user.UserID);
+
+    // Generate JWT token
+    const token = this.generateToken(user.UserID, user.Email, stores);
+
+    return {
+      user: {
+        UserID: user.UserID,
+        Email: user.Email,
+        FullName: user.FullName,
+        Phone: user.Phone,
+        Address: user.Address,
+        CreatedAt: user.CreatedAt,
+      },
+      stores,
+      access_token: token,
+    };
+  }
+
+  /**
+   * Validate user credentials (email and password)
+   * @param email User email
+   * @param password User password (plain text)
+   * @returns User object if valid
+   * @throws UnauthorizedException if invalid
+   */
+  async validateUser(email: string, password: string) {
+    // Find user by email
     const user = await prisma.user.findUnique({
       where: { Email: email },
     });
@@ -76,28 +122,65 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Generate JWT token
-    const token = this.generateToken(user.UserID, user.Email);
-
-    return {
-      user: {
-        UserID: user.UserID,
-        Email: user.Email,
-        FullName: user.FullName,
-        Phone: user.Phone,
-        Address: user.Address,
-        CreatedAt: user.CreatedAt,
-      },
-      access_token: token,
-    };
+    return user;
   }
 
-  private generateToken(userId: number, email: string): string {
-    const payload = { sub: userId, email };
+  /**
+   * Get all stores that user belongs to with their roles
+   * @param userId User ID
+   * @returns Array of stores with role information
+   */
+  private async getUserStores(userId: number) {
+    const storeUsers = await prisma.storeUser.findMany({
+      where: { UserID: userId },
+      include: {
+        store: {
+          select: {
+            StoreID: true,
+            StoreName: true,
+            Subdomain: true,
+          },
+        },
+        role: {
+          select: {
+            RoleID: true,
+            RoleName: true,
+          },
+        },
+      },
+    });
+
+    return storeUsers.map((su) => ({
+      storeId: su.store.StoreID,
+      storeName: su.store.StoreName,
+      subdomain: su.store.Subdomain,
+      roleId: su.role.RoleID,
+      roleName: su.role.RoleName,
+    }));
+  }
+
+  /**
+   * Generate JWT token with user info and stores
+   */
+  private generateToken(
+    userId: number,
+    email: string,
+    stores: Array<{
+      storeId: number;
+      storeName: string;
+      subdomain: string;
+      roleId: number;
+      roleName: string;
+    }>,
+  ): string {
+    const payload: JwtPayload = { sub: userId, email, stores };
     return this.jwtService.sign(payload);
   }
 
-  async validateUser(userId: number) {
+  /**
+   * Get user by ID with store information
+   */
+  async getUserById(userId: number) {
     return await prisma.user.findUnique({
       where: { UserID: userId },
       select: {
