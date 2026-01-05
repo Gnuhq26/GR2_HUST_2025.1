@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -14,6 +15,48 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
+  // Swagger Configuration
+  const config = new DocumentBuilder()
+    .setTitle('Multi-Tenant API')
+    .setDescription('Multi-tenant store management system with RBAC')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth', // This name here is important for matching with @ApiBearerAuth() in controllers
+    )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-store-id',
+        in: 'header',
+        description: 'Store ID for multi-tenant context',
+      },
+      'store-id',
+    )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-subdomain',
+        in: 'header',
+        description: 'Store subdomain for multi-tenant context',
+      },
+      'subdomain',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Swagger documentation: http://localhost:${port}/api`);
 }
 bootstrap();
