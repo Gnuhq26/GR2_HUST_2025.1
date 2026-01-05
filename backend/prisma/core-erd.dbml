@@ -1,0 +1,70 @@
+// Multi-tenant Core Database Schema
+// Use this file at https://dbdiagram.io/
+
+Table Stores {
+  StoreID int [pk, increment]
+  StoreName varchar(255) [not null]
+  Subdomain varchar(100) [unique, not null]
+  Phone varchar(20)
+  Address varchar(500)
+  Status varchar(50) [not null, default: 'Active']
+  CreatedAt timestamp [not null, default: `now()`]
+}
+
+Table Users {
+  UserID int [pk, increment]
+  Email varchar(255) [unique, not null]
+  PasswordHash varchar(255) [not null]
+  FullName varchar(100)
+  Phone varchar(20)
+  Address varchar(255)
+  CreatedAt timestamp [not null, default: `now()`]
+}
+
+Table Roles {
+  RoleID int [pk, increment]
+  StoreID int [not null]
+  RoleName varchar(100) [not null]
+  Description varchar(255)
+  CreatedAt timestamp [not null, default: `now()`]
+  UpdatedAt timestamp [not null]
+  
+  Indexes {
+    (StoreID, RoleName) [unique]
+  }
+}
+
+Table Permissions {
+  PermissionID int [pk, increment]
+  Action varchar(100) [not null]
+  Subject varchar(100) [not null]
+  CreatedAt timestamp [not null, default: `now()`]
+  UpdatedAt timestamp [not null]
+  
+  Indexes {
+    (Action, Subject) [unique]
+  }
+}
+
+Table RolePermission {
+  RoleID int [pk]
+  PermissionID int [pk]
+  CreatedAt timestamp [not null, default: `now()`]
+  UpdatedAt timestamp [not null]
+}
+
+Table StoreUser {
+  StoreID int [pk]
+  UserID int [pk]
+  RoleID int [not null]
+  CreatedAt timestamp [not null, default: `now()`]
+  UpdatedAt timestamp [not null]
+}
+
+// Relationships
+Ref: Roles.StoreID > Stores.StoreID [delete: cascade]
+Ref: RolePermission.RoleID > Roles.RoleID [delete: cascade]
+Ref: RolePermission.PermissionID > Permissions.PermissionID [delete: cascade]
+Ref: StoreUser.StoreID > Stores.StoreID [delete: cascade]
+Ref: StoreUser.UserID > Users.UserID [delete: cascade]
+Ref: StoreUser.RoleID > Roles.RoleID [delete: restrict]
