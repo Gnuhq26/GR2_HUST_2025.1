@@ -3,10 +3,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
+import { StoresModule } from './modules/stores/stores.module';
 import { GlobalJwtAuthGuard } from './common/guards/global-jwt-auth.guard';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RolesModule, PermissionsModule, StoresModule],
   controllers: [AppController],
   providers: [
     AppService,
