@@ -13,11 +13,11 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto';
-import { CheckPermission } from '../../common/decorators';
-import { CurrentStore } from '../../common/decorators';
+import { CheckPermission } from '../../common/decorators/check-permission.decorator';
+import { CurrentStore } from '../../common/decorators/current-store.decorator';
 
 @ApiTags('Products')
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -36,13 +36,15 @@ export class ProductsController {
 
   @Get()
   @CheckPermission('read', 'Product')
-  @ApiOperation({ summary: 'Lấy danh sách sản phẩm (cần quyền read:Product)' })
+  @ApiOperation({ summary: 'Lấy danh sách sản phẩm với filtering (cần quyền read:Product)' })
   @ApiResponse({ status: 200, description: 'Danh sách sản phẩm' })
   async findAll(
     @CurrentStore() storeId: number,
     @Query('isActive', new ParseBoolPipe({ optional: true })) isActive?: boolean,
+    @Query('search') search?: string,
+    @Query('categoryId', new ParseIntPipe({ optional: true })) categoryId?: number,
   ) {
-    return await this.productsService.findAll(storeId, isActive);
+    return await this.productsService.findAll(storeId, isActive, search, categoryId);
   }
 
   @Get(':id')
@@ -133,5 +135,99 @@ export class ProductsController {
       quantity: body.quantity,
       baseQuantity,
     };
+  }
+
+  // ========== PRICE LIST MANAGEMENT ==========
+
+  @Post(':id/prices')
+  @CheckPermission('create', 'Product')
+  @ApiOperation({ summary: 'Thêm bảng giá mới cho sản phẩm (cần quyền create:Product)' })
+  @ApiResponse({ status: 201, description: 'Bảng giá đã được thêm' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm' })
+  async addPrice(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Body() body: { priceName: string; unitPrice: number; minQuantity?: number },
+  ) {
+    return await this.productsService.addPriceList(
+      storeId,
+      productId,
+      body.priceName,
+      body.unitPrice,
+      body.minQuantity ?? 0,
+    );
+  }
+
+  @Patch(':id/prices/:priceId')
+  @CheckPermission('update', 'Product')
+  @ApiOperation({ summary: 'Cập nhật bảng giá (cần quyền update:Product)' })
+  @ApiResponse({ status: 200, description: 'Bảng giá đã được cập nhật' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc bảng giá' })
+  async updatePrice(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Param('priceId', ParseIntPipe) priceId: number,
+    @Body() body: { priceName?: string; unitPrice?: number; minQuantity?: number },
+  ) {
+    return await this.productsService.updatePriceList(
+      storeId,
+      productId,
+      priceId,
+      body.priceName,
+      body.unitPrice,
+      body.minQuantity,
+    );
+  }
+
+  @Delete(':id/prices/:priceId')
+  @CheckPermission('delete', 'Product')
+  @ApiOperation({ summary: 'Xóa bảng giá (cần quyền delete:Product)' })
+  @ApiResponse({ status: 200, description: 'Bảng giá đã được xóa' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc bảng giá' })
+  async deletePrice(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Param('priceId', ParseIntPipe) priceId: number,
+  ) {
+    return await this.productsService.deletePriceList(storeId, productId, priceId);
+  }
+
+  @Get(':id/prices/applicable')
+  @CheckPermission('read', 'Product')
+  @ApiOperation({
+    summary: 'Lấy giá phù hợp dựa trên số lượng mua (cần quyền read:Product)',
+    description:
+      'Logic: Tìm bảng giá có MinQuantity <= quantity, chọn giá có MinQuantity cao nhất. Ví dụ: Mua 150 viên -> Chọn "Giá thợ thầu" (MinQuantity: 100) thay vì "Giá lẻ" (MinQuantity: 0)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Giá phù hợp và tổng tiền',
+    schema: {
+      example: {
+        product: {
+          ProductID: 1,
+          ProductName: 'Gạch xây dựng',
+          SKU: 'GACH-001',
+          BaseUnit: 'Viên',
+        },
+        quantity: 150,
+        appliedPrice: {
+          PriceID: 2,
+          PriceName: 'Giá thợ thầu',
+          UnitPrice: 800,
+          MinQuantity: 100,
+        },
+        totalAmount: 120000,
+        allAvailablePrices: [],
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc không có bảng giá phù hợp' })
+  async getApplicablePrice(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Query('quantity', ParseIntPipe) quantity: number,
+  ) {
+    return await this.productsService.getApplicablePrice(storeId, productId, quantity);
   }
 }

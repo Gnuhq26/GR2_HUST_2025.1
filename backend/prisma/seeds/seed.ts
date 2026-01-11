@@ -49,6 +49,18 @@ async function main() {
   });
 
   await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'update', Subject: 'Product' } },
+    update: {},
+    create: { Action: 'update', Subject: 'Product' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'delete', Subject: 'Product' } },
+    update: {},
+    create: { Action: 'delete', Subject: 'Product' },
+  });
+
+  await prisma.permission.upsert({
     where: { Action_Subject: { Action: 'read', Subject: 'Order' } },
     update: {},
     create: { Action: 'read', Subject: 'Order' },
@@ -146,6 +158,20 @@ async function main() {
             permission: {
               connect: {
                 Action_Subject: { Action: 'create', Subject: 'Product' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'update', Subject: 'Product' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'delete', Subject: 'Product' },
               },
             },
           },

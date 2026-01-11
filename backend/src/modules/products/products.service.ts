@@ -1,11 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma';
 import { CreateProductDto, UpdateProductDto } from './dto';
+import { ensureInventoryExists } from '../../utils';
 
 @Injectable()
 export class ProductsService {
@@ -90,17 +86,36 @@ export class ProductsService {
       },
     });
 
+    // Tự động tạo bản ghi Inventory với Quantity = 0 (Task 21)
+    await ensureInventoryExists(this.prisma, storeId, product.ProductID);
+
     return product;
   }
 
   /**
-   * Lấy danh sách tất cả sản phẩm của store
+   * Lấy danh sách tất cả sản phẩm của store với filtering
+   * @param storeId ID cửa hàng (từ CurrentStore decorator)
+   * @param isActive Lọc theo trạng thái hoạt động
+   * @param search Tìm kiếm theo tên hoặc SKU
+   * @param categoryId Lọc theo danh mục
    */
-  async findAll(storeId: number, isActive?: boolean) {
+  async findAll(
+    storeId: number,
+    isActive?: boolean,
+    search?: string,
+    categoryId?: number,
+  ) {
     return await this.prisma.product.findMany({
       where: {
         StoreID: storeId,
         ...(isActive !== undefined && { IsActive: isActive }),
+        ...(categoryId && { CategoryID: categoryId }),
+        ...(search && {
+          OR: [
+            { ProductName: { contains: search } },
+            { SKU: { contains: search } },
+          ],
+        }),
       },
       include: {
         category: {
@@ -260,5 +275,143 @@ export class ProductsService {
 
     // Tính số lượng theo đơn vị gốc
     return quantity * Number(unit.ExchangeValue);
+  }
+
+  /**
+   * Thêm bảng giá mới cho sản phẩm
+   */
+  async addPriceList(
+    storeId: number,
+    productId: number,
+    priceName: string,
+    unitPrice: number,
+    minQuantity: number = 0,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại và thuộc về store này không
+    await this.findOne(storeId, productId);
+
+    return await this.prisma.priceList.create({
+      data: {
+        ProductID: productId,
+        PriceName: priceName,
+        UnitPrice: unitPrice,
+        MinQuantity: minQuantity,
+      },
+    });
+  }
+
+  /**
+   * Cập nhật bảng giá
+   */
+  async updatePriceList(
+    storeId: number,
+    productId: number,
+    priceId: number,
+    priceName?: string,
+    unitPrice?: number,
+    minQuantity?: number,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại không
+    await this.findOne(storeId, productId);
+
+    // Kiểm tra price có thuộc product này không
+    const existingPrice = await this.prisma.priceList.findFirst({
+      where: {
+        PriceID: priceId,
+        ProductID: productId,
+      },
+    });
+
+    if (!existingPrice) {
+      throw new NotFoundException('Price not found for this product');
+    }
+
+    return await this.prisma.priceList.update({
+      where: { PriceID: priceId },
+      data: {
+        ...(priceName && { PriceName: priceName }),
+        ...(unitPrice !== undefined && { UnitPrice: unitPrice }),
+        ...(minQuantity !== undefined && { MinQuantity: minQuantity }),
+      },
+    });
+  }
+
+  /**
+   * Xóa bảng giá
+   */
+  async deletePriceList(
+    storeId: number,
+    productId: number,
+    priceId: number,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại không
+    await this.findOne(storeId, productId);
+
+    // Kiểm tra price có thuộc product này không
+    const existingPrice = await this.prisma.priceList.findFirst({
+      where: {
+        PriceID: priceId,
+        ProductID: productId,
+      },
+    });
+
+    if (!existingPrice) {
+      throw new NotFoundException('Price not found for this product');
+    }
+
+    return await this.prisma.priceList.delete({
+      where: { PriceID: priceId },
+    });
+  }
+
+  /**
+   * Lấy giá phù hợp dựa trên số lượng mua
+   * Logic: Tìm bảng giá có MinQuantity <= quantity, chọn giá có MinQuantity cao nhất
+   * Ví dụ: Mua 150 viên -> Chọn "Giá thợ thầu" (MinQuantity: 100) thay vì "Giá lẻ" (MinQuantity: 0)
+   */
+  async getApplicablePrice(
+    storeId: number,
+    productId: number,
+    quantity: number,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại không
+    const product = await this.findOne(storeId, productId);
+
+    // Lấy tất cả bảng giá của sản phẩm
+    const allPrices = await this.prisma.priceList.findMany({
+      where: {
+        ProductID: productId,
+        MinQuantity: { lte: quantity }, // Chỉ lấy giá có MinQuantity <= quantity
+      },
+      orderBy: {
+        MinQuantity: 'desc', // Sắp xếp giảm dần để lấy MinQuantity cao nhất
+      },
+    });
+
+    if (allPrices.length === 0) {
+      throw new NotFoundException(
+        `No applicable price found for quantity ${quantity}`,
+      );
+    }
+
+    const applicablePrice = allPrices[0]; // Lấy giá đầu tiên (MinQuantity cao nhất)
+
+    return {
+      product: {
+        ProductID: product.ProductID,
+        ProductName: product.ProductName,
+        SKU: product.SKU,
+        BaseUnit: product.BaseUnit,
+      },
+      quantity,
+      appliedPrice: {
+        PriceID: applicablePrice.PriceID,
+        PriceName: applicablePrice.PriceName,
+        UnitPrice: applicablePrice.UnitPrice,
+        MinQuantity: applicablePrice.MinQuantity,
+      },
+      totalAmount: Number(applicablePrice.UnitPrice) * quantity,
+      allAvailablePrices: allPrices,
+    };
   }
 }
