@@ -28,6 +28,8 @@ model Store {
   // Relations
   roles Role[]
   storeUsers StoreUser[]
+  categories Category[]
+  products Product[]
 }
 
 model Role {
@@ -98,4 +100,66 @@ model StoreUser {
   role Role @relation(fields: [RoleID], references: [RoleID], onDelete: Restrict)
 
   @@id([StoreID, UserID])
+}
+
+// ==========================================
+// PHẦN NGHIỆP VỤ (BUSINESS LOGIC)
+// ==========================================
+
+model Category {
+  CategoryID   Int      @id @default(autoincrement())
+  StoreID      Int
+  CategoryName String   @db.VarChar(255)
+  Description  String?  @db.Text
+  CreatedAt    DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt    DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store        Store     @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  products     Product[]
+
+  @@unique([StoreID, CategoryName]) // Tránh trùng tên danh mục trong cùng 1 cửa hàng
+}
+
+model Product {
+  ProductID   Int      @id @default(autoincrement())
+  StoreID     Int
+  CategoryID  Int
+  ProductName String   @db.VarChar(255)
+  SKU         String?  @db.VarChar(50) 
+  BaseUnit    String   @db.VarChar(50) // Đơn vị gốc (ví dụ: Viên, Kg, Bao)
+  Description String?  @db.Text
+  IsActive    Boolean  @default(true)
+  CreatedAt   DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt   DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store        Store         @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  category     Category      @relation(fields: [CategoryID], references: [CategoryID], onDelete: Restrict)
+  units        ProductUnit[]
+  prices       PriceList[]
+
+  @@unique([StoreID, SKU]) // Mã hàng không được trùng trong cùng 1 cửa hàng
+}
+
+model ProductUnit {
+  UnitID        Int     @id @default(autoincrement())
+  ProductID     Int
+  UnitName      String  @db.VarChar(50) // Ví dụ: Pallet, Xe, Thùng
+  ExchangeValue Decimal @db.Decimal(18, 3) // Tỷ lệ quy đổi (ví dụ: 1 Pallet = 500.000 Viên)
+  IsDefault     Boolean @default(false)
+
+  // Relations
+  product       Product @relation(fields: [ProductID], references: [ProductID], onDelete: Cascade)
+}
+
+model PriceList {
+  PriceID      Int     @id @default(autoincrement())
+  ProductID    Int
+  PriceName    String  @db.VarChar(100) // Ví dụ: Giá thợ, Giá bán lẻ
+  UnitPrice    Decimal @db.Decimal(18, 2)
+  MinQuantity  Int     @default(0)
+
+  // Relations
+  product      Product @relation(fields: [ProductID], references: [ProductID], onDelete: Cascade)
 }

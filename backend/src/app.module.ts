@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { StoresModule } from './modules/stores/stores.module';
+import { ProductsModule } from './modules/products/products.module';
 import { GlobalJwtAuthGuard } from './common/guards/global-jwt-auth.guard';
 import { PrismaModule } from './common/prisma';
 
@@ -16,6 +17,7 @@ import { PrismaModule } from './common/prisma';
     RolesModule,
     PermissionsModule,
     StoresModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [
