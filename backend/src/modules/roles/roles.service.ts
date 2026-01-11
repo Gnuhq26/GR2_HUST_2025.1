@@ -1,16 +1,15 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../common/prisma';
 import { CreateRoleDto, UpdateRoleDto, AssignPermissionsDto } from './dto';
-
-const prisma = new PrismaClient();
 
 @Injectable()
 export class RolesService {
+  constructor(private readonly prisma: PrismaService) {}
   /**
    * Get all roles in a specific store
    */
   async findAll(storeId: number) {
-    return await prisma.role.findMany({
+    return await this.prisma.role.findMany({
       where: { StoreID: storeId },
       include: {
         rolePermissions: {
@@ -38,7 +37,7 @@ export class RolesService {
    * Get a single role by ID
    */
   async findOne(roleId: number, storeId: number) {
-    const role = await prisma.role.findFirst({
+    const role = await this.prisma.role.findFirst({
       where: {
         RoleID: roleId,
         StoreID: storeId,
@@ -83,7 +82,7 @@ export class RolesService {
     const { roleName, description } = createRoleDto;
 
     // Check if role name already exists in this store
-    const existingRole = await prisma.role.findUnique({
+    const existingRole = await this.prisma.role.findUnique({
       where: {
         StoreID_RoleName: {
           StoreID: storeId,
@@ -98,7 +97,7 @@ export class RolesService {
       );
     }
 
-    return await prisma.role.create({
+    return await this.prisma.role.create({
       data: {
         StoreID: storeId,
         RoleName: roleName,
@@ -125,7 +124,7 @@ export class RolesService {
 
     // If changing role name, check for conflicts
     if (roleName && roleName !== role.RoleName) {
-      const existingRole = await prisma.role.findUnique({
+      const existingRole = await this.prisma.role.findUnique({
         where: {
           StoreID_RoleName: {
             StoreID: storeId,
@@ -141,7 +140,7 @@ export class RolesService {
       }
     }
 
-    return await prisma.role.update({
+    return await this.prisma.role.update({
       where: { RoleID: roleId },
       data: {
         ...(roleName && { RoleName: roleName }),
@@ -171,7 +170,7 @@ export class RolesService {
       );
     }
 
-    await prisma.role.delete({
+    await this.prisma.role.delete({
       where: { RoleID: roleId },
     });
 
@@ -192,7 +191,7 @@ export class RolesService {
     const { permissionIds } = assignPermissionsDto;
 
     // Verify all permission IDs exist
-    const permissions = await prisma.permission.findMany({
+    const permissions = await this.prisma.permission.findMany({
       where: {
         PermissionID: { in: permissionIds },
       },
@@ -203,12 +202,12 @@ export class RolesService {
     }
 
     // Delete existing permissions for this role
-    await prisma.rolePermission.deleteMany({
+    await this.prisma.rolePermission.deleteMany({
       where: { RoleID: roleId },
     });
 
     // Create new permissions
-    const rolePermissions = await prisma.rolePermission.createMany({
+    const rolePermissions = await this.prisma.rolePermission.createMany({
       data: permissionIds.map((permissionId) => ({
         RoleID: roleId,
         PermissionID: permissionId,
@@ -226,7 +225,7 @@ export class RolesService {
     // Verify role belongs to the store
     await this.findOne(roleId, storeId);
 
-    const rolePermissions = await prisma.rolePermission.findMany({
+    const rolePermissions = await this.prisma.rolePermission.findMany({
       where: { RoleID: roleId },
       include: {
         permission: true,

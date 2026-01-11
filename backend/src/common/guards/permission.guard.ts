@@ -6,14 +6,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma';
 import {
   CHECK_PERMISSION_KEY,
   PermissionCheck,
 } from '../decorators/check-permission.decorator';
 import { StoreInfo } from '../decorators/current-store.decorator';
-
-const prisma = new PrismaClient();
 
 /**
  * Permission Guard for Role-Based Access Control (RBAC)
@@ -26,7 +24,10 @@ const prisma = new PrismaClient();
  */
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Get required permission from decorator
@@ -107,7 +108,7 @@ export class PermissionGuard implements CanActivate {
     subject: string,
   ): Promise<boolean> {
     // Check for super admin permission (manage all)
-    const superAdminPermission = await prisma.rolePermission.findFirst({
+    const superAdminPermission = await this.prisma.rolePermission.findFirst({
       where: {
         RoleID: roleId,
         permission: {
@@ -122,7 +123,7 @@ export class PermissionGuard implements CanActivate {
     }
 
     // Check for specific permission
-    const specificPermission = await prisma.rolePermission.findFirst({
+    const specificPermission = await this.prisma.rolePermission.findFirst({
       where: {
         RoleID: roleId,
         permission: {

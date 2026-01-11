@@ -1,16 +1,15 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../common/prisma';
 import { AddMemberDto, UpdateMemberRoleDto } from './dto';
-
-const prisma = new PrismaClient();
 
 @Injectable()
 export class StoresService {
+  constructor(private readonly prisma: PrismaService) {}
   /**
    * Get all members of a store with their roles
    */
   async getMembers(storeId: number) {
-    const storeUsers = await prisma.storeUser.findMany({
+    const storeUsers = await this.prisma.storeUser.findMany({
       where: { StoreID: storeId },
       include: {
         user: {
@@ -51,7 +50,7 @@ export class StoresService {
     const { email, roleId, note } = addMemberDto;
 
     // Find user by email
-    const user = await prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { Email: email },
     });
 
@@ -62,7 +61,7 @@ export class StoresService {
     }
 
     // Check if user is already a member of this store
-    const existingMember = await prisma.storeUser.findUnique({
+    const existingMember = await this.prisma.storeUser.findUnique({
       where: {
         StoreID_UserID: {
           StoreID: storeId,
@@ -78,7 +77,7 @@ export class StoresService {
     }
 
     // Verify role exists and belongs to this store
-    const role = await prisma.role.findFirst({
+    const role = await this.prisma.role.findFirst({
       where: {
         RoleID: roleId,
         StoreID: storeId,
@@ -92,7 +91,7 @@ export class StoresService {
     }
 
     // Add user to store
-    const storeUser = await prisma.storeUser.create({
+    const storeUser = await this.prisma.storeUser.create({
       data: {
         StoreID: storeId,
         UserID: user.UserID,
@@ -139,7 +138,7 @@ export class StoresService {
     const { roleId } = updateMemberRoleDto;
 
     // Verify member exists in store
-    const storeUser = await prisma.storeUser.findUnique({
+    const storeUser = await this.prisma.storeUser.findUnique({
       where: {
         StoreID_UserID: {
           StoreID: storeId,
@@ -157,7 +156,7 @@ export class StoresService {
     }
 
     // Verify new role exists and belongs to this store
-    const newRole = await prisma.role.findFirst({
+    const newRole = await this.prisma.role.findFirst({
       where: {
         RoleID: roleId,
         StoreID: storeId,
@@ -177,7 +176,7 @@ export class StoresService {
     }
 
     // Update role
-    const updated = await prisma.storeUser.update({
+    const updated = await this.prisma.storeUser.update({
       where: {
         StoreID_UserID: {
           StoreID: storeId,
@@ -221,7 +220,7 @@ export class StoresService {
    */
   async removeMember(storeId: number, userId: number) {
     // Verify member exists
-    const storeUser = await prisma.storeUser.findUnique({
+    const storeUser = await this.prisma.storeUser.findUnique({
       where: {
         StoreID_UserID: {
           StoreID: storeId,
@@ -243,7 +242,7 @@ export class StoresService {
     }
 
     // Delete membership
-    await prisma.storeUser.delete({
+    await this.prisma.storeUser.delete({
       where: {
         StoreID_UserID: {
           StoreID: storeId,
@@ -261,7 +260,7 @@ export class StoresService {
    * Get store details
    */
   async getStoreDetails(storeId: number) {
-    const store = await prisma.store.findUnique({
+    const store = await this.prisma.store.findUnique({
       where: { StoreID: storeId },
       include: {
         _count: {

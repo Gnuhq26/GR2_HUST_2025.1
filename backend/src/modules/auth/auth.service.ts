@@ -4,11 +4,9 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../common/prisma';
 import * as bcrypt from 'bcrypt';
 import { LoginDto, RegisterDto } from './dto';
-
-const prisma = new PrismaClient();
 
 export interface JwtPayload {
   sub: number;
@@ -24,13 +22,16 @@ export interface JwtPayload {
 
 @Injectable()
 export class AuthService {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private prisma: PrismaService,
+  ) {}
 
   async register(registerDto: RegisterDto) {
     const { email, password, fullName, phone, address } = registerDto;
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await this.prisma.user.findUnique({
       where: { Email: email },
     });
 
@@ -42,7 +43,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-    const user = await prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         Email: email,
         PasswordHash: hashedPassword,
@@ -107,7 +108,7 @@ export class AuthService {
    */
   async validateUser(email: string, password: string) {
     // Find user by email
-    const user = await prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { Email: email },
     });
 
@@ -131,7 +132,7 @@ export class AuthService {
    * @returns Array of stores with role information
    */
   private async getUserStores(userId: number) {
-    const storeUsers = await prisma.storeUser.findMany({
+    const storeUsers = await this.prisma.storeUser.findMany({
       where: { UserID: userId },
       include: {
         store: {
@@ -181,7 +182,7 @@ export class AuthService {
    * Get user by ID with store information
    */
   async getUserById(userId: number) {
-    return await prisma.user.findUnique({
+    return await this.prisma.user.findUnique({
       where: { UserID: userId },
       select: {
         UserID: true,

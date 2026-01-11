@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../src/common/prisma';
 import * as bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaService();
 
 // Hàm hash mật khẩu
 async function hashPassword(password: string) {

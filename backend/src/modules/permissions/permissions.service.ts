@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { PrismaService } from '../../common/prisma';
 
 @Injectable()
 export class PermissionsService {
+  constructor(private readonly prisma: PrismaService) {}
   /**
    * Get all available permissions in the system
    */
   async findAll() {
-    return await prisma.permission.findMany({
+    return await this.prisma.permission.findMany({
       orderBy: [{ Subject: 'asc' }, { Action: 'asc' }],
     });
   }
@@ -44,7 +43,7 @@ export class PermissionsService {
    * Get a specific permission by ID
    */
   async findOne(id: number) {
-    return await prisma.permission.findUnique({
+    return await this.prisma.permission.findUnique({
       where: { PermissionID: id },
     });
   }
