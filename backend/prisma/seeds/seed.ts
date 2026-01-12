@@ -84,6 +84,81 @@ async function main() {
     create: { Action: 'read', Subject: 'ProfitReport' }, // Xem báo cáo lợi nhuận
   });
 
+  // Supplier Permissions (Giai đoạn 8)
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'Supplier' } },
+    update: {},
+    create: { Action: 'read', Subject: 'Supplier' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'create', Subject: 'Supplier' } },
+    update: {},
+    create: { Action: 'create', Subject: 'Supplier' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'update', Subject: 'Supplier' } },
+    update: {},
+    create: { Action: 'update', Subject: 'Supplier' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'delete', Subject: 'Supplier' } },
+    update: {},
+    create: { Action: 'delete', Subject: 'Supplier' },
+  });
+
+  // Inventory Permissions (Giai đoạn 8)
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'Inventory' } },
+    update: {},
+    create: { Action: 'read', Subject: 'Inventory' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'create', Subject: 'Inventory' } },
+    update: {},
+    create: { Action: 'create', Subject: 'Inventory' }, // Nhập kho
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'update', Subject: 'Inventory' } },
+    update: {},
+    create: { Action: 'update', Subject: 'Inventory' }, // Điều chỉnh tồn kho
+  });
+
+  // Category Permissions
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'Category' } },
+    update: {},
+    create: { Action: 'read', Subject: 'Category' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'create', Subject: 'Category' } },
+    update: {},
+    create: { Action: 'create', Subject: 'Category' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'update', Subject: 'Category' } },
+    update: {},
+    create: { Action: 'update', Subject: 'Category' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'delete', Subject: 'Category' } },
+    update: {},
+    create: { Action: 'delete', Subject: 'Category' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'ProfitReport' } },
+    update: {},
+    create: { Action: 'read', Subject: 'ProfitReport' }, // Xem báo cáo lợi nhuận
+  });
+
   // Tạo User Admin mẫu
   console.log('Seeding Admin User...');
   const adminPassword = await hashPassword('123456');
@@ -184,6 +259,72 @@ async function main() {
             permission: {
               connect: {
                 Action_Subject: { Action: 'create', Subject: 'Order' },
+              },
+            },
+          },
+          // Supplier permissions (Giai đoạn 8)
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'read', Subject: 'Supplier' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'create', Subject: 'Supplier' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'update', Subject: 'Supplier' },
+              },
+            },
+          },
+          // Inventory permissions (Giai đoạn 8)
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'read', Subject: 'Inventory' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'create', Subject: 'Inventory' },
+              },
+            },
+          },
+          // Category permissions
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'read', Subject: 'Category' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'create', Subject: 'Category' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'update', Subject: 'Category' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'delete', Subject: 'Category' },
               },
             },
           },

@@ -30,6 +30,8 @@ model Store {
   storeUsers StoreUser[]
   categories Category[]
   products Product[]
+  suppliers Supplier[]
+  inventories Inventory[]
 }
 
 model Role {
@@ -138,6 +140,8 @@ model Product {
   category     Category      @relation(fields: [CategoryID], references: [CategoryID], onDelete: Restrict)
   units        ProductUnit[]
   prices       PriceList[]
+  inventories  Inventory[]
+  stockReceiptDetails StockReceiptDetail[]
 
   @@unique([StoreID, SKU]) // Mã hàng không được trùng trong cùng 1 cửa hàng
 }
@@ -162,4 +166,69 @@ model PriceList {
 
   // Relations
   product      Product @relation(fields: [ProductID], references: [ProductID], onDelete: Cascade)
+}
+
+// ==========================================
+// KHO HÀNG VÀ NHẬP XUẤT (INVENTORY MANAGEMENT)
+// ==========================================
+
+// 1. Quản lý Nhà cung cấp
+model Supplier {
+  SupplierID   Int      @id @default(autoincrement())
+  StoreID      Int
+  SupplierName String   @db.VarChar(255)
+  Phone        String?  @db.VarChar(20)
+  Address      String?  @db.Text
+  CreatedAt    DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt    DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store        Store    @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  receipts     StockReceipt[]
+
+  @@unique([StoreID, SupplierName]) // Tránh trùng tên nhà cung cấp trong cùng 1 cửa hàng
+}
+
+// 2. Bảng Tồn kho thực tế (Inventory)
+model Inventory {
+  InventoryID  Int      @id @default(autoincrement())
+  StoreID      Int
+  ProductID    Int
+  Quantity     Decimal  @db.Decimal(18, 2) @default(0) // Luôn lưu theo đơn vị gốc (BaseUnit)
+  LastUpdated  DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store        Store    @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  product      Product  @relation(fields: [ProductID], references: [ProductID], onDelete: Cascade)
+
+  @@unique([StoreID, ProductID]) // Mỗi sản phẩm trong một cửa hàng chỉ có 1 dòng tồn kho chính
+}
+
+// 3. Phiếu nhập kho
+model StockReceipt {
+  ReceiptID    Int      @id @default(autoincrement())
+  StoreID      Int
+  SupplierID   Int
+  ImportDate   DateTime @default(now()) @db.Timestamp(0)
+  TotalAmount  Decimal  @db.Decimal(18, 2)
+  Note         String?  @db.Text
+  CreatedAt    DateTime @default(now()) @db.Timestamp(0)
+
+  // Relations
+  supplier     Supplier @relation(fields: [SupplierID], references: [SupplierID], onDelete: Restrict)
+  details      StockReceiptDetail[]
+}
+
+// 4. Chi tiết phiếu nhập
+model StockReceiptDetail {
+  DetailID     Int      @id @default(autoincrement())
+  ReceiptID    Int
+  ProductID    Int
+  UnitName     String   @db.VarChar(50) // Đơn vị tính khi nhập (có thể khác BaseUnit)
+  Quantity     Decimal  @db.Decimal(18, 2) // Số lượng nhập theo UnitName
+  UnitPrice    Decimal  @db.Decimal(18, 2) // Giá nhập của đơn vị này
+  
+  // Relations
+  receipt      StockReceipt @relation(fields: [ReceiptID], references: [ReceiptID], onDelete: Cascade)
+  product      Product      @relation(fields: [ProductID], references: [ProductID], onDelete: Restrict)
 }

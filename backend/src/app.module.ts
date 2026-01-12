@@ -7,6 +7,9 @@ import { RolesModule } from './modules/roles/roles.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { StoresModule } from './modules/stores/stores.module';
 import { ProductsModule } from './modules/products/products.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { GlobalJwtAuthGuard } from './common/guards/global-jwt-auth.guard';
 import { PrismaModule } from './common/prisma';
 
@@ -18,6 +21,9 @@ import { PrismaModule } from './common/prisma';
     PermissionsModule,
     StoresModule,
     ProductsModule,
+    CategoriesModule,
+    SuppliersModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [
