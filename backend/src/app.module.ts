@@ -10,6 +10,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { CustomersModule } from './modules/customers/customers.module';
 import { GlobalJwtAuthGuard } from './common/guards/global-jwt-auth.guard';
 import { PrismaModule } from './common/prisma';
 
@@ -24,6 +25,7 @@ import { PrismaModule } from './common/prisma';
     CategoriesModule,
     SuppliersModule,
     InventoryModule,
+    CustomersModule,
   ],
   controllers: [AppController],
   providers: [
