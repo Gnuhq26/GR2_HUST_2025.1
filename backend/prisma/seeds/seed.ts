@@ -153,6 +153,31 @@ async function main() {
     create: { Action: 'delete', Subject: 'Category' },
   });
 
+  // Customer Permissions (Giai đoạn 9)
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'Customer' } },
+    update: {},
+    create: { Action: 'read', Subject: 'Customer' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'create', Subject: 'Customer' } },
+    update: {},
+    create: { Action: 'create', Subject: 'Customer' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'update', Subject: 'Customer' } },
+    update: {},
+    create: { Action: 'update', Subject: 'Customer' },
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'delete', Subject: 'Customer' } },
+    update: {},
+    create: { Action: 'delete', Subject: 'Customer' },
+  });
+
   await prisma.permission.upsert({
     where: { Action_Subject: { Action: 'read', Subject: 'ProfitReport' } },
     update: {},
@@ -325,6 +350,35 @@ async function main() {
             permission: {
               connect: {
                 Action_Subject: { Action: 'delete', Subject: 'Category' },
+              },
+            },
+          },
+          // Customer permissions (Giai đoạn 9)
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'read', Subject: 'Customer' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'create', Subject: 'Customer' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'update', Subject: 'Customer' },
+              },
+            },
+          },
+          {
+            permission: {
+              connect: {
+                Action_Subject: { Action: 'delete', Subject: 'Customer' },
               },
             },
           },

@@ -32,6 +32,9 @@ model Store {
   products Product[]
   suppliers Supplier[]
   inventories Inventory[]
+  customers Customer[]
+  orders Order[]
+  stockReceipts StockReceipt[]
 }
 
 model Role {
@@ -87,6 +90,7 @@ model User {
 
   // Relations
   storeUsers StoreUser[]
+  orders Order[]
 }
 
 model StoreUser {
@@ -142,6 +146,7 @@ model Product {
   prices       PriceList[]
   inventories  Inventory[]
   stockReceiptDetails StockReceiptDetail[]
+  orderDetails OrderDetail[]
 
   @@unique([StoreID, SKU]) // Mã hàng không được trùng trong cùng 1 cửa hàng
 }
@@ -215,8 +220,12 @@ model StockReceipt {
   CreatedAt    DateTime @default(now()) @db.Timestamp(0)
 
   // Relations
+  store        Store    @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
   supplier     Supplier @relation(fields: [SupplierID], references: [SupplierID], onDelete: Restrict)
   details      StockReceiptDetail[]
+
+  @@index([StoreID])
+  @@index([SupplierID])
 }
 
 // 4. Chi tiết phiếu nhập
@@ -227,8 +236,70 @@ model StockReceiptDetail {
   UnitName     String   @db.VarChar(50) // Đơn vị tính khi nhập (có thể khác BaseUnit)
   Quantity     Decimal  @db.Decimal(18, 2) // Số lượng nhập theo UnitName
   UnitPrice    Decimal  @db.Decimal(18, 2) // Giá nhập của đơn vị này
-  
+
   // Relations
   receipt      StockReceipt @relation(fields: [ReceiptID], references: [ReceiptID], onDelete: Cascade)
   product      Product      @relation(fields: [ProductID], references: [ProductID], onDelete: Restrict)
+
+  @@index([ReceiptID])
+  @@index([ProductID])
+}
+
+// ==========================================
+// BÁN HÀNG VÀ QUẢN LÝ ĐƠN HÀNG (SALES & ORDER MANAGEMENT) - GIAI ĐOẠN 9
+// ==========================================
+
+// 1. Quản lý Khách hàng
+model Customer {
+  CustomerID   Int      @id @default(autoincrement())
+  StoreID      Int
+  CustomerName String   @db.VarChar(255)
+  Phone        String?  @db.VarChar(20)
+  Address      String?  @db.Text
+  CreatedAt    DateTime @default(now()) @db.Timestamp(0)
+  UpdatedAt    DateTime @updatedAt @db.Timestamp(0)
+
+  // Relations
+  store        Store    @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  orders       Order[]
+
+  @@index([StoreID])
+}
+
+// 2. Đơn hàng (Hóa đơn)
+model Order {
+  OrderID      Int      @id @default(autoincrement())
+  StoreID      Int
+  CustomerID   Int?     // Có thể bán cho khách vãng lai (null)
+  UserID       Int      // Nhân viên thực hiện bán hàng
+  OrderDate    DateTime @default(now()) @db.Timestamp(0)
+  TotalAmount  Decimal  @db.Decimal(18, 2)
+  Note         String?  @db.Text
+
+  // Relations
+  store        Store         @relation(fields: [StoreID], references: [StoreID], onDelete: Cascade)
+  customer     Customer?     @relation(fields: [CustomerID], references: [CustomerID], onDelete: SetNull)
+  user         User          @relation(fields: [UserID], references: [UserID], onDelete: Restrict)
+  details      OrderDetail[]
+
+  @@index([StoreID])
+  @@index([CustomerID])
+  @@index([UserID])
+}
+
+// 3. Chi tiết đơn hàng
+model OrderDetail {
+  DetailID     Int      @id @default(autoincrement())
+  OrderID      Int
+  ProductID    Int
+  UnitName     String   @db.VarChar(50) // Đơn vị bán (Pallet, Thùng, Viên...)
+  Quantity     Decimal  @db.Decimal(18, 2) // Số lượng bán theo UnitName
+  UnitPrice    Decimal  @db.Decimal(18, 2) // Giá thực tế lúc chốt đơn
+  
+  // Relations
+  order        Order    @relation(fields: [OrderID], references: [OrderID], onDelete: Cascade)
+  product      Product  @relation(fields: [ProductID], references: [ProductID], onDelete: Restrict)
+
+  @@index([OrderID])
+  @@index([ProductID])
 }
