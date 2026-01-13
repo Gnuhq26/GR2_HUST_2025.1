@@ -41,7 +41,11 @@ export class PriceListDto {
   @IsString()
   priceName!: string;
 
-  @ApiProperty({ example: 1000000, description: 'Đơn giá' })
+  @ApiProperty({ example: 'Viên', description: 'Đơn vị tính cho giá này' })
+  @IsString()
+  unitName!: string;
+
+  @ApiProperty({ example: 1000000, description: 'Đơn giá theo unitName' })
   @IsNumber()
   @Min(0)
   unitPrice!: number;

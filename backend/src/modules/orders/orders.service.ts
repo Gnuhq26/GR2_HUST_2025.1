@@ -112,12 +112,26 @@ export class OrdersService {
         }
 
         // 2.5. Xác định đơn giá từ PriceList
-        // Tìm giá phù hợp dựa trên số lượng mua (so sánh với MinQuantity)
+        // Tìm giá phù hợp dựa trên UnitName và số lượng mua
         let unitPrice = new Prisma.Decimal(0);
-        const sortedPrices = product.prices.sort(
+        
+        // Lọc giá theo đúng đơn vị bán
+        const matchingPrices = product.prices.filter(
+          (p) => p.UnitName === item.UnitName,
+        );
+
+        if (matchingPrices.length === 0) {
+          throw new BadRequestException(
+            `Sản phẩm ${product.ProductName} chưa có giá bán cho đơn vị ${item.UnitName}`,
+          );
+        }
+
+        // Sắp xếp theo MinQuantity giảm dần
+        const sortedPrices = matchingPrices.sort(
           (a, b) => b.MinQuantity - a.MinQuantity,
         );
 
+        // Tìm giá phù hợp với số lượng
         for (const price of sortedPrices) {
           if (item.Quantity >= price.MinQuantity) {
             unitPrice = price.UnitPrice;
@@ -126,14 +140,8 @@ export class OrdersService {
         }
 
         // Nếu không tìm thấy giá phù hợp, lấy giá có MinQuantity thấp nhất
-        if (unitPrice.isZero() && sortedPrices.length > 0) {
-          unitPrice = sortedPrices[sortedPrices.length - 1].UnitPrice;
-        }
-
         if (unitPrice.isZero()) {
-          throw new BadRequestException(
-            `Sản phẩm ${product.ProductName} chưa có giá bán`,
-          );
+          unitPrice = sortedPrices[sortedPrices.length - 1].UnitPrice;
         }
 
         // 2.6. Tính thành tiền

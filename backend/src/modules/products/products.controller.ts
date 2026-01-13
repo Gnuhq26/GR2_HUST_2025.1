@@ -147,12 +147,13 @@ export class ProductsController {
   async addPrice(
     @CurrentStore() storeId: number,
     @Param('id', ParseIntPipe) productId: number,
-    @Body() body: { priceName: string; unitPrice: number; minQuantity?: number },
+    @Body() body: { priceName: string; unitName: string; unitPrice: number; minQuantity?: number },
   ) {
     return await this.productsService.addPriceList(
       storeId,
       productId,
       body.priceName,
+      body.unitName,
       body.unitPrice,
       body.minQuantity ?? 0,
     );
@@ -167,13 +168,14 @@ export class ProductsController {
     @CurrentStore() storeId: number,
     @Param('id', ParseIntPipe) productId: number,
     @Param('priceId', ParseIntPipe) priceId: number,
-    @Body() body: { priceName?: string; unitPrice?: number; minQuantity?: number },
+    @Body() body: { priceName?: string; unitName?: string; unitPrice?: number; minQuantity?: number },
   ) {
     return await this.productsService.updatePriceList(
       storeId,
       productId,
       priceId,
       body.priceName,
+      body.unitName,
       body.unitPrice,
       body.minQuantity,
     );
@@ -195,9 +197,9 @@ export class ProductsController {
   @Get(':id/prices/applicable')
   @CheckPermission('read', 'Product')
   @ApiOperation({
-    summary: 'Lấy giá phù hợp dựa trên số lượng mua (cần quyền read:Product)',
+    summary: 'Lấy giá phù hợp dựa trên đơn vị và số lượng mua (cần quyền read:Product)',
     description:
-      'Logic: Tìm bảng giá có MinQuantity <= quantity, chọn giá có MinQuantity cao nhất. Ví dụ: Mua 150 viên -> Chọn "Giá thợ thầu" (MinQuantity: 100) thay vì "Giá lẻ" (MinQuantity: 0)',
+      'Logic: 1) Filter giá theo unitName. 2) Tìm giá có MinQuantity <= quantity. 3) Chọn giá có MinQuantity cao nhất. Ví dụ: Mua 10 Pallet -> Tìm giá của "Pallet", rồi chọn giá phù hợp với MinQuantity <= 10',
   })
   @ApiResponse({
     status: 200,
@@ -210,24 +212,27 @@ export class ProductsController {
           SKU: 'GACH-001',
           BaseUnit: 'Viên',
         },
-        quantity: 150,
+        unitName: 'Pallet',
+        quantity: 10,
         appliedPrice: {
-          PriceID: 2,
-          PriceName: 'Giá thợ thầu',
-          UnitPrice: 800,
-          MinQuantity: 100,
+          PriceID: 3,
+          PriceName: 'Giá đại lý',
+          UnitName: 'Pallet',
+          UnitPrice: 400000,
+          MinQuantity: 5,
         },
-        totalAmount: 120000,
+        totalAmount: 4000000,
         allAvailablePrices: [],
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc không có bảng giá phù hợp' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc không có bảng giá phù hợp cho đơn vị này' })
   async getApplicablePrice(
     @CurrentStore() storeId: number,
     @Param('id', ParseIntPipe) productId: number,
+    @Query('unitName') unitName: string,
     @Query('quantity', ParseIntPipe) quantity: number,
   ) {
-    return await this.productsService.getApplicablePrice(storeId, productId, quantity);
+    return await this.productsService.getApplicablePrice(storeId, productId, unitName, quantity);
   }
 }
