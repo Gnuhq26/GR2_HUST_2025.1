@@ -147,6 +147,7 @@ model Product {
   inventories  Inventory[]
   stockReceiptDetails StockReceiptDetail[]
   orderDetails OrderDetail[]
+  inventoryLogs InventoryLog[]
 
   @@unique([StoreID, SKU]) // Mã hàng không được trùng trong cùng 1 cửa hàng
 }
@@ -217,6 +218,7 @@ model StockReceipt {
   SupplierID   Int
   ImportDate   DateTime @default(now()) @db.Timestamp(0)
   TotalAmount  Decimal  @db.Decimal(18, 2)
+  PaidAmount   Decimal  @db.Decimal(18, 2) @default(0) // Số tiền đã trả cho nhà cung cấp
   Note         String?  @db.Text
   CreatedAt    DateTime @default(now()) @db.Timestamp(0)
 
@@ -275,6 +277,8 @@ model Order {
   UserID       Int      // Nhân viên thực hiện bán hàng
   OrderDate    DateTime @default(now()) @db.Timestamp(0)
   TotalAmount  Decimal  @db.Decimal(18, 2)
+  PaidAmount   Decimal  @db.Decimal(18, 2) @default(0) // Số tiền khách hàng đã trả
+  Status       String   @default("Completed") @db.VarChar(50) // Completed, Pending, Cancelled
   Note         String?  @db.Text
 
   // Relations
@@ -296,6 +300,7 @@ model OrderDetail {
   UnitName     String   @db.VarChar(50) // Đơn vị bán (Pallet, Thùng, Viên...)
   Quantity     Decimal  @db.Decimal(18, 2) // Số lượng bán theo UnitName
   UnitPrice    Decimal  @db.Decimal(18, 2) // Giá thực tế lúc chốt đơn
+  CostPrice    Decimal  @db.Decimal(18, 2) @default(0) // Giá vốn tại thời điểm bán (để tính lợi nhuận)
   
   // Relations
   order        Order    @relation(fields: [OrderID], references: [OrderID], onDelete: Cascade)
@@ -303,4 +308,32 @@ model OrderDetail {
 
   @@index([OrderID])
   @@index([ProductID])
+}
+
+// ==========================================
+// BÁO CÁO VÀ CÔNG NỢ (REPORTING & DEBT MANAGEMENT) - GIAI ĐOẠN 10
+// ==========================================
+
+// Lịch sử biến động kho (Audit Log)
+model InventoryLog {
+  LogID          Int      @id @default(autoincrement())
+  StoreID        Int
+  ProductID      Int
+  ChangeType     String   @db.VarChar(50) // IN (nhập), OUT (xuất/bán), ADJUST (điều chỉnh), RETURN (trả hàng)
+  ReferenceType  String?  @db.VarChar(50) // Order, StockReceipt, Manual
+  ReferenceID    Int?     // ID của Order hoặc StockReceipt
+  OldQuantity    Decimal  @db.Decimal(18, 2)
+  ChangeQuantity Decimal  @db.Decimal(18, 2) // Số dương = tăng, số âm = giảm
+  NewQuantity    Decimal  @db.Decimal(18, 2)
+  Note           String?  @db.Text
+  CreatedBy      Int?     // UserID của người thực hiện
+  CreatedAt      DateTime @default(now()) @db.Timestamp(0)
+
+  // Relations
+  product        Product  @relation(fields: [ProductID], references: [ProductID], onDelete: Restrict)
+
+  @@index([StoreID])
+  @@index([ProductID])
+  @@index([ReferenceType, ReferenceID])
+  @@index([CreatedAt])
 }
