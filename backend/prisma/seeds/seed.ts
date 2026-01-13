@@ -79,6 +79,12 @@ async function main() {
   });
 
   await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'Report' } },
+    update: {},
+    create: { Action: 'read', Subject: 'Report' }, // Xem báo cáo doanh thu, top sản phẩm
+  });
+
+  await prisma.permission.upsert({
     where: { Action_Subject: { Action: 'read', Subject: 'ProfitReport' } },
     update: {},
     create: { Action: 'read', Subject: 'ProfitReport' }, // Xem báo cáo lợi nhuận
