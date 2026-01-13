@@ -13,6 +13,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { DebtsModule } from './modules/debts/debts.module';
 import { GlobalJwtAuthGuard } from './common/guards/global-jwt-auth.guard';
 import { PrismaModule } from './common/prisma';
 
@@ -30,6 +31,7 @@ import { PrismaModule } from './common/prisma';
     CustomersModule,
     OrdersModule,
     ReportsModule,
+    DebtsModule,
   ],
   controllers: [AppController],
   providers: [

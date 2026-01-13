@@ -90,6 +90,18 @@ async function main() {
     create: { Action: 'read', Subject: 'ProfitReport' }, // Xem báo cáo lợi nhuận
   });
 
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'read', Subject: 'Debt' } },
+    update: {},
+    create: { Action: 'read', Subject: 'Debt' }, // Xem công nợ
+  });
+
+  await prisma.permission.upsert({
+    where: { Action_Subject: { Action: 'manage', Subject: 'Debt' } },
+    update: {},
+    create: { Action: 'manage', Subject: 'Debt' }, // Quản lý thanh toán công nợ
+  });
+
   // Supplier Permissions (Giai đoạn 8)
   await prisma.permission.upsert({
     where: { Action_Subject: { Action: 'read', Subject: 'Supplier' } },
