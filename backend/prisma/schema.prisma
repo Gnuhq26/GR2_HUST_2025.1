@@ -166,7 +166,8 @@ model PriceList {
   PriceID      Int     @id @default(autoincrement())
   ProductID    Int
   PriceName    String  @db.VarChar(100) // Ví dụ: Giá thợ, Giá bán lẻ
-  UnitPrice    Decimal @db.Decimal(18, 2)
+  UnitName     String  @db.VarChar(50) // Đơn vị tính cho giá này (Viên, Thùng, Pallet...)
+  UnitPrice    Decimal @db.Decimal(18, 2) // Giá theo UnitName
   MinQuantity  Int     @default(0)
 
   // Relations

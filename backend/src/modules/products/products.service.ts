@@ -68,6 +68,7 @@ export class ProductsService {
           ? {
               create: dto.prices.map((price) => ({
                 PriceName: price.priceName,
+                UnitName: price.unitName,
                 UnitPrice: price.unitPrice,
                 MinQuantity: price.minQuantity ?? 0,
               })),
@@ -163,7 +164,8 @@ export class ProductsService {
   }
 
   /**
-   * Cập nhật sản phẩm
+   * Cập nhật sản phẩm (bao gồm units và prices)
+   * Strategy: Replace All - Xóa toàn bộ units/prices cũ và tạo mới
    */
   async update(storeId: number, productId: number, dto: UpdateProductDto) {
     // Kiểm tra sản phẩm có tồn tại và thuộc về store này không
@@ -199,28 +201,65 @@ export class ProductsService {
       }
     }
 
-    // Cập nhật sản phẩm
-    // Lưu ý: Cập nhật units và prices phức tạp hơn, có thể cần API riêng
-    const product = await this.prisma.product.update({
-      where: { ProductID: productId },
-      data: {
-        ProductName: dto.productName,
-        CategoryID: dto.categoryId,
-        SKU: dto.sku,
-        BaseUnit: dto.baseUnit,
-        Description: dto.description,
-        IsActive: dto.isActive,
-      },
-      include: {
-        category: {
-          select: {
-            CategoryID: true,
-            CategoryName: true,
-          },
+    // Sử dụng transaction để đảm bảo tính toàn vẹn
+    const product = await this.prisma.$transaction(async (tx) => {
+      // 1. Xóa toàn bộ units cũ (nếu có units mới)
+      if (dto.units !== undefined) {
+        await tx.productUnit.deleteMany({
+          where: { ProductID: productId },
+        });
+      }
+
+      // 2. Xóa toàn bộ prices cũ (nếu có prices mới)
+      if (dto.prices !== undefined) {
+        await tx.priceList.deleteMany({
+          where: { ProductID: productId },
+        });
+      }
+
+      // 3. Cập nhật thông tin sản phẩm và tạo mới units/prices
+      return await tx.product.update({
+        where: { ProductID: productId },
+        data: {
+          ProductName: dto.productName,
+          CategoryID: dto.categoryId,
+          SKU: dto.sku,
+          BaseUnit: dto.baseUnit,
+          Description: dto.description,
+          IsActive: dto.isActive,
+          // Tạo mới units (nếu có)
+          units: dto.units
+            ? {
+                create: dto.units.map((unit) => ({
+                  UnitName: unit.unitName,
+                  ExchangeValue: unit.exchangeValue,
+                  IsDefault: unit.isDefault ?? false,
+                })),
+              }
+            : undefined,
+          // Tạo mới prices (nếu có)
+          prices: dto.prices
+            ? {
+                create: dto.prices.map((price) => ({
+                  PriceName: price.priceName,
+                  UnitName: price.unitName,
+                  UnitPrice: price.unitPrice,
+                  MinQuantity: price.minQuantity ?? 0,
+                })),
+              }
+            : undefined,
         },
-        units: true,
-        prices: true,
-      },
+        include: {
+          category: {
+            select: {
+              CategoryID: true,
+              CategoryName: true,
+            },
+          },
+          units: true,
+          prices: true,
+        },
+      });
     });
 
     return product;
@@ -284,6 +323,7 @@ export class ProductsService {
     storeId: number,
     productId: number,
     priceName: string,
+    unitName: string,
     unitPrice: number,
     minQuantity: number = 0,
   ) {
@@ -294,6 +334,7 @@ export class ProductsService {
       data: {
         ProductID: productId,
         PriceName: priceName,
+        UnitName: unitName,
         UnitPrice: unitPrice,
         MinQuantity: minQuantity,
       },
@@ -308,6 +349,7 @@ export class ProductsService {
     productId: number,
     priceId: number,
     priceName?: string,
+    unitName?: string,
     unitPrice?: number,
     minQuantity?: number,
   ) {
@@ -330,6 +372,7 @@ export class ProductsService {
       where: { PriceID: priceId },
       data: {
         ...(priceName && { PriceName: priceName }),
+        ...(unitName && { UnitName: unitName }),
         ...(unitPrice !== undefined && { UnitPrice: unitPrice }),
         ...(minQuantity !== undefined && { MinQuantity: minQuantity }),
       },
@@ -365,22 +408,27 @@ export class ProductsService {
   }
 
   /**
-   * Lấy giá phù hợp dựa trên số lượng mua
-   * Logic: Tìm bảng giá có MinQuantity <= quantity, chọn giá có MinQuantity cao nhất
-   * Ví dụ: Mua 150 viên -> Chọn "Giá thợ thầu" (MinQuantity: 100) thay vì "Giá lẻ" (MinQuantity: 0)
+   * Lấy giá phù hợp dựa trên đơn vị và số lượng mua
+   * Logic: 
+   * 1. Filter giá theo UnitName trước
+   * 2. Tìm giá có MinQuantity <= quantity
+   * 3. Chọn giá có MinQuantity cao nhất
+   * Ví dụ: Mua 10 Pallet -> Tìm giá của "Pallet", rồi chọn giá phù hợp với quantity >= 5
    */
   async getApplicablePrice(
     storeId: number,
     productId: number,
+    unitName: string,
     quantity: number,
   ) {
     // Kiểm tra sản phẩm có tồn tại không
     const product = await this.findOne(storeId, productId);
 
-    // Lấy tất cả bảng giá của sản phẩm
+    // Lấy tất cả bảng giá của sản phẩm theo đơn vị
     const allPrices = await this.prisma.priceList.findMany({
       where: {
         ProductID: productId,
+        UnitName: unitName,             // Filter theo đơn vị trước
         MinQuantity: { lte: quantity }, // Chỉ lấy giá có MinQuantity <= quantity
       },
       orderBy: {
@@ -390,7 +438,7 @@ export class ProductsService {
 
     if (allPrices.length === 0) {
       throw new NotFoundException(
-        `No applicable price found for quantity ${quantity}`,
+        `No applicable price found for unit "${unitName}" with quantity ${quantity}. Please add a price for this unit.`,
       );
     }
 
@@ -403,10 +451,12 @@ export class ProductsService {
         SKU: product.SKU,
         BaseUnit: product.BaseUnit,
       },
+      unitName,
       quantity,
       appliedPrice: {
         PriceID: applicablePrice.PriceID,
         PriceName: applicablePrice.PriceName,
+        UnitName: applicablePrice.UnitName,
         UnitPrice: applicablePrice.UnitPrice,
         MinQuantity: applicablePrice.MinQuantity,
       },
