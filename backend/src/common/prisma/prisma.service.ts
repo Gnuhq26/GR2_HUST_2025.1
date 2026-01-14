@@ -15,6 +15,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
       connectionLimit: 10,
+      allowPublicKeyRetrieval: true,
+      ssl: false,
     };
 
     // Log configuration (ẩn password)
