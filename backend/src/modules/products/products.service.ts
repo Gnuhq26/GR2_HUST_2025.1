@@ -317,6 +317,123 @@ export class ProductsService {
   }
 
   /**
+   * Thêm đơn vị quy đổi mới cho sản phẩm
+   */
+  async addProductUnit(
+    storeId: number,
+    productId: number,
+    unitName: string,
+    exchangeValue: number,
+    isDefault: boolean = false,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại và thuộc về store này không
+    await this.findOne(storeId, productId);
+
+    // Kiểm tra UnitName có bị trùng không
+    const existingUnit = await this.prisma.productUnit.findFirst({
+      where: {
+        ProductID: productId,
+        UnitName: unitName,
+      },
+    });
+
+    if (existingUnit) {
+      throw new ConflictException(
+        `Unit "${unitName}" already exists for this product`,
+      );
+    }
+
+    return await this.prisma.productUnit.create({
+      data: {
+        ProductID: productId,
+        UnitName: unitName,
+        ExchangeValue: exchangeValue,
+        IsDefault: isDefault,
+      },
+    });
+  }
+
+  /**
+   * Cập nhật đơn vị quy đổi
+   */
+  async updateProductUnit(
+    storeId: number,
+    productId: number,
+    unitId: number,
+    unitName?: string,
+    exchangeValue?: number,
+    isDefault?: boolean,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại không
+    await this.findOne(storeId, productId);
+
+    // Kiểm tra unit có thuộc product này không
+    const existingUnit = await this.prisma.productUnit.findFirst({
+      where: {
+        UnitID: unitId,
+        ProductID: productId,
+      },
+    });
+
+    if (!existingUnit) {
+      throw new NotFoundException('Unit not found for this product');
+    }
+
+    // Kiểm tra UnitName mới có bị trùng không (nếu có)
+    if (unitName && unitName !== existingUnit.UnitName) {
+      const duplicateUnit = await this.prisma.productUnit.findFirst({
+        where: {
+          ProductID: productId,
+          UnitName: unitName,
+        },
+      });
+
+      if (duplicateUnit) {
+        throw new ConflictException(
+          `Unit "${unitName}" already exists for this product`,
+        );
+      }
+    }
+
+    return await this.prisma.productUnit.update({
+      where: { UnitID: unitId },
+      data: {
+        ...(unitName && { UnitName: unitName }),
+        ...(exchangeValue !== undefined && { ExchangeValue: exchangeValue }),
+        ...(isDefault !== undefined && { IsDefault: isDefault }),
+      },
+    });
+  }
+
+  /**
+   * Xóa đơn vị quy đổi
+   */
+  async deleteProductUnit(
+    storeId: number,
+    productId: number,
+    unitId: number,
+  ) {
+    // Kiểm tra sản phẩm có tồn tại không
+    await this.findOne(storeId, productId);
+
+    // Kiểm tra unit có thuộc product này không
+    const existingUnit = await this.prisma.productUnit.findFirst({
+      where: {
+        UnitID: unitId,
+        ProductID: productId,
+      },
+    });
+
+    if (!existingUnit) {
+      throw new NotFoundException('Unit not found for this product');
+    }
+
+    return await this.prisma.productUnit.delete({
+      where: { UnitID: unitId },
+    });
+  }
+
+  /**
    * Thêm bảng giá mới cho sản phẩm
    */
   async addPriceList(
