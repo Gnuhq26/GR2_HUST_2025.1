@@ -78,9 +78,35 @@ const useAuthStore = create((set) => ({
     });
   },
 
-  setCurrentStore: (storeId) => {
-    localStorage.setItem('currentStoreId', storeId);
-    set({ currentStoreId: storeId });
+  setCurrentStore: (store) => {
+    localStorage.setItem('currentStoreId', store.storeId);
+    set({ currentStoreId: store.storeId });
+  },
+
+  refreshAuth: async () => {
+    set({ isLoading: true });
+    try {
+      const data = await authService.getProfile();
+      
+      // Backend returns flat object: { UserID, Email, FullName, ..., stores: [...] }
+      const { stores, ...userData } = data;
+      
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      if (stores) {
+        localStorage.setItem('stores', JSON.stringify(stores));
+        set({ stores });
+      }
+      
+      set({
+        user: userData,
+        isLoading: false,
+      });
+      return { success: true, stores: stores || [] };
+    } catch (error) {
+      set({ isLoading: false });
+      return { success: false };
+    }
   },
 
   clearError: () => {
@@ -92,15 +118,19 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const data = await authService.getProfile();
-      localStorage.setItem('user', JSON.stringify(data.user));
       
-      if (data.stores) {
-        localStorage.setItem('stores', JSON.stringify(data.stores));
-        set({ stores: data.stores });
+      // Backend returns flat object: { UserID, Email, FullName, ..., stores: [...] }
+      const { stores, ...userData } = data;
+      
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      if (stores) {
+        localStorage.setItem('stores', JSON.stringify(stores));
+        set({ stores });
       }
       
       set({
-        user: data.user,
+        user: userData,
         isLoading: false,
       });
     } catch (error) {

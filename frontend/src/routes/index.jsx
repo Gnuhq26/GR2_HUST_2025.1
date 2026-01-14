@@ -8,6 +8,9 @@ import Suppliers from '../pages/Suppliers';
 import Inventory from '../pages/Inventory';
 import Orders from '../pages/Orders';
 import Reports from '../pages/Reports';
+import NoStore from '../pages/NoStore';
+import CreateStore from '../pages/CreateStore';
+import SelectStore from '../pages/SelectStore';
 import MainLayout from '../layouts/MainLayout';
 import useAuthStore from '../store/authStore';
 
@@ -18,6 +21,11 @@ export default function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+
+      {/* Multi-store Management (Auth Required) */}
+      <Route path="/no-store" element={isAuthenticated ? <NoStore /> : <Navigate to="/login" replace />} />
+      <Route path="/create-store" element={isAuthenticated ? <CreateStore /> : <Navigate to="/login" replace />} />
+      <Route path="/select-store" element={isAuthenticated ? <SelectStore /> : <Navigate to="/login" replace />} />
 
       {/* Protected Routes with Layout */}
       <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}>
