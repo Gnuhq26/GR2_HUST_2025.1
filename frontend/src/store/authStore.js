@@ -17,24 +17,24 @@ const useAuthStore = create((set) => ({
     try {
       const data = await authService.login(email, password);
       
-      // Lưu token và user info
-      localStorage.setItem('token', data.token);
+      // Lưu token và user info (backend trả về access_token)
+      localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      // Lưu danh sách cửa hàng nếu có
+      // Lưu danh sách cửa hàng nếu có (backend dùng storeId)
       if (data.stores && data.stores.length > 0) {
         localStorage.setItem('stores', JSON.stringify(data.stores));
         // Tự động chọn cửa hàng đầu tiên
-        localStorage.setItem('currentStoreId', data.stores[0].id);
+        localStorage.setItem('currentStoreId', data.stores[0].storeId);
         set({
           stores: data.stores,
-          currentStoreId: data.stores[0].id,
+          currentStoreId: data.stores[0].storeId,
         });
       }
       
       set({
         user: data.user,
-        token: data.token,
+        token: data.access_token,
         isAuthenticated: true,
         isLoading: false,
       });
