@@ -50,6 +50,13 @@ export class SuppliersService {
           ],
         }),
       },
+      include: {
+        _count: {
+          select: {
+            receipts: true, // Đếm số phiếu nhập từ nhà cung cấp này
+          },
+        },
+      },
       orderBy: {
         CreatedAt: 'desc',
       },
