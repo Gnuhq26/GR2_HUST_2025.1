@@ -5,6 +5,7 @@ import Products from '../pages/Products';
 import Categories from '../pages/Categories';
 import Customers from '../pages/Customers';
 import Suppliers from '../pages/Suppliers';
+import Inventory from '../pages/Inventory';
 import MainLayout from '../layouts/MainLayout';
 import useAuthStore from '../store/authStore';
 
@@ -23,6 +24,7 @@ export default function AppRoutes() {
         <Route path="/categories" element={<Categories />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/suppliers" element={<Suppliers />} />
+        <Route path="/inventory" element={<Inventory />} />
       </Route>
 
       {/* Catch all - redirect to login or dashboard */}
