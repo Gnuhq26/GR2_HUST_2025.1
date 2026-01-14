@@ -1,10 +1,105 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma';
-import { AddMemberDto, UpdateMemberRoleDto } from './dto';
+import { AddMemberDto, UpdateMemberRoleDto, CreateStoreDto } from './dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Create a new store with default roles
+   * Automatically assigns the creator as Admin
+   * Users can create multiple stores (for business expansion or multiple locations)
+   */
+  async createStore(userId: number, createStoreDto: CreateStoreDto) {
+    const { storeName, subdomain, phone, address } = createStoreDto;
+
+    // Check if subdomain already exists
+    const existingStore = await this.prisma.store.findUnique({
+      where: { Subdomain: subdomain },
+    });
+
+    if (existingStore) {
+      throw new ConflictException(`Subdomain "${subdomain}" is already taken`);
+    }
+
+    // Create store with default roles and assign creator as Admin
+    const store = await this.prisma.$transaction(async (tx) => {
+      // 1. Create Store
+      const newStore = await tx.store.create({
+        data: {
+          StoreName: storeName,
+          Subdomain: subdomain,
+          Phone: phone,
+          Address: address,
+          Status: 'Active',
+        },
+      });
+
+      // 2. Create default Roles
+      const adminRole = await tx.role.create({
+        data: {
+          StoreID: newStore.StoreID,
+          RoleName: 'Chủ cửa hàng',
+          Description: 'Toàn quyền quản lý cửa hàng',
+        },
+      });
+
+      await tx.role.createMany({
+        data: [
+          {
+            StoreID: newStore.StoreID,
+            RoleName: 'Quản lý',
+            Description: 'Quản lý cửa hàng, xem báo cáo',
+          },
+          {
+            StoreID: newStore.StoreID,
+            RoleName: 'Nhân viên bán hàng',
+            Description: 'Bán hàng, quản lý đơn hàng',
+          },
+          {
+            StoreID: newStore.StoreID,
+            RoleName: 'Thủ kho',
+            Description: 'Quản lý kho hàng, nhập xuất',
+          },
+        ],
+      });
+
+      // 3. Assign "manage all" permission to Admin role (PermissionID = 1)
+      await tx.rolePermission.create({
+        data: {
+          RoleID: adminRole.RoleID,
+          PermissionID: 1, // manage:all - highest permission
+        },
+      });
+
+      // 4. Assign creator as Admin
+      await tx.storeUser.create({
+        data: {
+          StoreID: newStore.StoreID,
+          UserID: userId,
+          RoleID: adminRole.RoleID,
+        },
+      });
+
+      return newStore;
+    });
+
+    return {
+      message: 'Store created successfully',
+      store: {
+        storeId: store.StoreID,
+        storeName: store.StoreName,
+        subdomain: store.Subdomain,
+        phone: store.Phone,
+        address: store.Address,
+        status: store.Status,
+        createdAt: store.CreatedAt,
+      },
+    };
+  }
+
   /**
    * Get all members of a store with their roles
    */
@@ -45,19 +140,28 @@ export class StoresService {
 
   /**
    * Add a member to the store
+   * If user doesn't exist, create a new user with default password (123456)
    */
   async addMember(storeId: number, addMemberDto: AddMemberDto) {
     const { email, roleId, note } = addMemberDto;
 
-    // Find user by email
-    const user = await this.prisma.user.findUnique({
+    // Find or create user by email
+    let user = await this.prisma.user.findUnique({
       where: { Email: email },
     });
 
+    // If user doesn't exist, create new user with default password
     if (!user) {
-      throw new NotFoundException(
-        `User with email "${email}" not found. User must register first.`,
-      );
+      const defaultPassword = '123456';
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+      user = await this.prisma.user.create({
+        data: {
+          Email: email,
+          PasswordHash: hashedPassword,
+          FullName: email.split('@')[0], // Use email prefix as default name
+        },
+      });
     }
 
     // Check if user is already a member of this store

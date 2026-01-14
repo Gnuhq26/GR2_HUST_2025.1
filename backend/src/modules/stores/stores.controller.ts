@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { StoresService } from './stores.service';
-import { AddMemberDto, UpdateMemberRoleDto } from './dto';
+import { AddMemberDto, UpdateMemberRoleDto, CreateStoreDto } from './dto';
 import { CurrentStore } from '../../common/decorators/current-store.decorator';
 import { CheckPermission } from '../../common/decorators/check-permission.decorator';
 
@@ -10,6 +10,35 @@ import { CheckPermission } from '../../common/decorators/check-permission.decora
 @Controller('stores')
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new store (users can create multiple stores for expansion)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Store created successfully with default roles. Creator is assigned as Admin. Users can create multiple stores.',
+    schema: {
+      example: {
+        message: 'Store created successfully',
+        store: {
+          storeId: 1,
+          storeName: 'Cửa hàng ABC',
+          subdomain: 'abc-store',
+          phone: '0123456789',
+          address: '79 Cầu Giấy, Hà Nội',
+          status: 'Active',
+          createdAt: '2026-01-15T00:00:00.000Z',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 409, description: 'Subdomain already exists' })
+  async createStore(
+    @Body() createStoreDto: CreateStoreDto,
+    @Req() req: any,
+  ) {
+    return await this.storesService.createStore(req.user.UserID, createStoreDto);
+  }
 
   @Get('details')
   @CheckPermission('read', 'Store')
@@ -74,10 +103,10 @@ export class StoresController {
   @Post('members')
   @CheckPermission('create', 'User')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Add a member to the store' })
+  @ApiOperation({ summary: 'Add a member to the store (auto-creates user if email not found)' })
   @ApiResponse({
     status: 201,
-    description: 'Member added successfully',
+    description: 'Member added successfully. If user email did not exist, a new user was created with default password (123456).',
     schema: {
       example: {
         message: 'User "staff@example.com" added to store successfully',
