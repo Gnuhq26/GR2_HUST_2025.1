@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import useAuthStore from '../store/authStore';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, error } = useAuthStore();
+  const { login, isLoading, error, isAuthenticated, refreshAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   
   const {
@@ -14,10 +14,45 @@ export default function Login() {
     formState: { errors },
   } = useForm();
 
+  // Check if user is already authenticated and redirect accordingly
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (isAuthenticated) {
+        // Refresh to get latest store list
+        const result = await refreshAuth();
+        if (result.success) {
+          const stores = result.stores || [];
+          
+          if (stores.length === 0) {
+            navigate('/no-store', { replace: true });
+          } else if (stores.length === 1) {
+            navigate('/', { replace: true });
+          } else {
+            navigate('/select-store', { replace: true });
+          }
+        }
+      }
+    };
+    
+    checkAuthAndRedirect();
+  }, [isAuthenticated, refreshAuth, navigate]);
+
   const onSubmit = async (data) => {
     const result = await login(data.email, data.password);
     if (result.success) {
-      navigate('/');
+      const stores = result.data.stores || [];
+      
+      // Multi-store routing logic
+      if (stores.length === 0) {
+        // No stores - show create/wait options
+        navigate('/no-store');
+      } else if (stores.length === 1) {
+        // Single store - go directly to dashboard
+        navigate('/');
+      } else {
+        // Multiple stores - show selection page
+        navigate('/select-store');
+      }
     }
   };
 

@@ -35,10 +35,38 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Return user with stores information from JWT payload
+    // Query DB for latest stores list (not from JWT payload)
+    const storeUsers = await this.prisma.storeUser.findMany({
+      where: { UserID: user.UserID },
+      include: {
+        store: {
+          select: {
+            StoreID: true,
+            StoreName: true,
+            Subdomain: true,
+          },
+        },
+        role: {
+          select: {
+            RoleID: true,
+            RoleName: true,
+          },
+        },
+      },
+    });
+
+    const stores = storeUsers.map((su) => ({
+      storeId: su.store.StoreID,
+      storeName: su.store.StoreName,
+      subdomain: su.store.Subdomain,
+      roleId: su.role.RoleID,
+      roleName: su.role.RoleName,
+    }));
+
+    // Return user with fresh stores information from DB
     return {
       ...user,
-      stores: payload.stores,
+      stores,
     };
   }
 }
