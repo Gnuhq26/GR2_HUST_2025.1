@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
-import { CreateProductDto, UpdateProductDto } from './dto';
+import { CreateProductDto, UpdateProductDto, AddProductUnitDto, UpdateProductUnitDto } from './dto';
 import { CheckPermission } from '../../common/decorators/check-permission.decorator';
 import { CurrentStore } from '../../common/decorators/current-store.decorator';
 
@@ -135,6 +135,62 @@ export class ProductsController {
       quantity: body.quantity,
       baseQuantity,
     };
+  }
+
+  // ========== PRODUCT UNIT MANAGEMENT ==========
+
+  @Post(':id/units')
+  @CheckPermission('create', 'Product')
+  @ApiOperation({ summary: 'Thêm đơn vị quy đổi mới cho sản phẩm (cần quyền create:Product)' })
+  @ApiResponse({ status: 201, description: 'Đơn vị đã được thêm' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm' })
+  @ApiResponse({ status: 409, description: 'Đơn vị đã tồn tại' })
+  async addUnit(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Body() dto: AddProductUnitDto,
+  ) {
+    return await this.productsService.addProductUnit(
+      storeId,
+      productId,
+      dto.unitName,
+      dto.exchangeValue,
+      dto.isDefault ?? false,
+    );
+  }
+
+  @Patch(':id/units/:unitId')
+  @CheckPermission('update', 'Product')
+  @ApiOperation({ summary: 'Cập nhật đơn vị quy đổi (cần quyền update:Product)' })
+  @ApiResponse({ status: 200, description: 'Đơn vị đã được cập nhật' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc đơn vị' })
+  async updateUnit(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Param('unitId', ParseIntPipe) unitId: number,
+    @Body() dto: UpdateProductUnitDto,
+  ) {
+    return await this.productsService.updateProductUnit(
+      storeId,
+      productId,
+      unitId,
+      dto.unitName,
+      dto.exchangeValue,
+      dto.isDefault,
+    );
+  }
+
+  @Delete(':id/units/:unitId')
+  @CheckPermission('delete', 'Product')
+  @ApiOperation({ summary: 'Xóa đơn vị quy đổi (cần quyền delete:Product)' })
+  @ApiResponse({ status: 200, description: 'Đơn vị đã được xóa' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy sản phẩm hoặc đơn vị' })
+  async deleteUnit(
+    @CurrentStore() storeId: number,
+    @Param('id', ParseIntPipe) productId: number,
+    @Param('unitId', ParseIntPipe) unitId: number,
+  ) {
+    return await this.productsService.deleteProductUnit(storeId, productId, unitId);
   }
 
   // ========== PRICE LIST MANAGEMENT ==========
