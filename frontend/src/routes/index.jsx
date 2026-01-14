@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
+import Products from '../pages/Products';
+import MainLayout from '../layouts/MainLayout';
 import useAuthStore from '../store/authStore';
 
 export default function AppRoutes() {
@@ -11,8 +13,11 @@ export default function AppRoutes() {
       {/* Public Routes */}
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
 
-      {/* Protected Routes */}
-      <Route path="/" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />}/>
+      {/* Protected Routes with Layout */}
+      <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/products" element={<Products />} />
+      </Route>
 
       {/* Catch all - redirect to login or dashboard */}
       <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}/>
