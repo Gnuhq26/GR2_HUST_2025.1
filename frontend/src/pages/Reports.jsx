@@ -139,7 +139,7 @@ function Reports() {
           <button
             onClick={handleFilterChange}
             disabled={loading}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="bg-primary-600 hover:bg-primary-700 text-black px-6 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
           >
             <FiBarChart2 />
             {loading ? 'Đang tải...' : 'Xem báo cáo'}

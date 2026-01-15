@@ -56,8 +56,7 @@ export default function Sidebar() {
             <FiShoppingBag className="text-white text-xl" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">POS System</h1>
-            <p className="text-xs text-gray-500">Quản lý bán hàng</p>
+            <h1 className="text-lg font-semibold text-blue-900">POS System</h1>
           </div>
         </div>
       </div>

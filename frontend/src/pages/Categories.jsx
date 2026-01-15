@@ -91,7 +91,7 @@ export default function Categories() {
         <ProtectedAction action="create" subject="Category">
           <button
             onClick={handleCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
           >
             <FiPlus />
             Thêm danh mục
@@ -253,7 +253,7 @@ export default function Categories() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   {editingCategory ? 'Cập nhật' : 'Thêm mới'}
                 </button>

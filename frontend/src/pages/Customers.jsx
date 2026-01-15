@@ -288,7 +288,7 @@ export default function Customers() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   {editingCustomer ? 'Cập nhật' : 'Thêm mới'}
                 </button>

@@ -123,7 +123,7 @@ function Suppliers() {
         <ProtectedAction action="create" subject="Supplier">
           <button
             onClick={handleCreate}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-primary-600 hover:bg-primary-700 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <FiPlus />
             Thêm nhà cung cấp
@@ -179,7 +179,7 @@ function Suppliers() {
           </div>
           <button
             type="submit"
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-primary-600 hover:bg-primary-700 text-black px-6 py-2 rounded-lg transition-colors"
           >
             Tìm kiếm
           </button>
@@ -345,7 +345,7 @@ function Suppliers() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   {isEditing ? 'Cập nhật' : 'Tạo mới'}
                 </button>
