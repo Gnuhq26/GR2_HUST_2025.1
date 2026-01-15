@@ -4,6 +4,7 @@ import ordersService from '../services/ordersService';
 import { customersService } from '../services/customersService';
 import { productsService } from '../services/productsService';
 import OrderDetailModal from '../components/orders/OrderDetailModal';
+import ProtectedAction from '../components/ProtectedAction';
 
 function Orders() {
   const [orders, setOrders] = useState([]);
@@ -201,13 +202,15 @@ function Orders() {
           <h1 className="text-2xl font-bold text-gray-800">Quản lý Đơn hàng</h1>
           <p className="text-gray-600 text-sm mt-1">Tạo và theo dõi đơn hàng</p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="bg-primary-600 hover:bg-primary-700 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <FiPlus />
-          Tạo đơn hàng
-        </button>
+        <ProtectedAction action="create" subject="Order">
+          <button
+            onClick={handleOpenCreate}
+            className="bg-primary-600 hover:bg-primary-700 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <FiPlus />
+            Tạo đơn hàng
+          </button>
+        </ProtectedAction>
       </div>
 
       {/* Stats Cards */}

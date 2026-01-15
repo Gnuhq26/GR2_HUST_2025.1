@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiX, FiSearch, FiPackage } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { categoriesService } from '../services/categoriesService';
+import ProtectedAction from '../components/ProtectedAction';
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
@@ -87,13 +88,15 @@ export default function Categories() {
           <h1 className="text-3xl font-bold text-gray-900">Danh mục</h1>
           <p className="text-gray-500 mt-1">Quản lý danh mục sản phẩm</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <FiPlus />
-          Thêm danh mục
-        </button>
+        <ProtectedAction action="create" subject="Category">
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <FiPlus />
+            Thêm danh mục
+          </button>
+        </ProtectedAction>
       </div>
 
       {/* Search Bar */}
@@ -171,20 +174,24 @@ export default function Categories() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right text-sm">
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className="text-primary-600 hover:text-primary-700 mr-3"
-                        title="Chỉnh sửa"
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(category.CategoryID, category.CategoryName)}
-                        className="text-red-600 hover:text-red-700"
-                        title="Xóa"
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <ProtectedAction action="update" subject="Category">
+                        <button
+                          onClick={() => handleEdit(category)}
+                          className="text-primary-600 hover:text-primary-700 mr-3"
+                          title="Chỉnh sửa"
+                        >
+                          <FiEdit2 />
+                        </button>
+                      </ProtectedAction>
+                      <ProtectedAction action="delete" subject="Category">
+                        <button
+                          onClick={() => handleDelete(category.CategoryID, category.CategoryName)}
+                          className="text-red-600 hover:text-red-700"
+                          title="Xóa"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </ProtectedAction>
                     </td>
                   </tr>
                 ))

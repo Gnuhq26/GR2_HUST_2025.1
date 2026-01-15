@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiX } from 'react-icons/fi';
 import { useForm } from 'react-hook-form';
 import { productsService } from '../services/productsService';
+import ProtectedAction from '../components/ProtectedAction';
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -84,13 +85,15 @@ export default function Products() {
           <h1 className="text-3xl font-bold text-gray-900">Sản phẩm</h1>
           <p className="text-gray-500 mt-1">Quản lý danh sách sản phẩm</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <FiPlus />
-          Thêm sản phẩm
-        </button>
+        <ProtectedAction action="create" subject="Product">
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <FiPlus />
+            Thêm sản phẩm
+          </button>
+        </ProtectedAction>
       </div>
 
       {/* Table */}
@@ -131,18 +134,22 @@ export default function Products() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right text-sm">
-                      <button
-                        onClick={() => handleEdit(product)}
-                        className="text-primary-600 hover:text-primary-700 mr-3"
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.ProductID)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <ProtectedAction action="update" subject="Product">
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="text-primary-600 hover:text-primary-700 mr-3"
+                        >
+                          <FiEdit2 />
+                        </button>
+                      </ProtectedAction>
+                      <ProtectedAction action="delete" subject="Product">
+                        <button
+                          onClick={() => handleDelete(product.ProductID)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </ProtectedAction>
                     </td>
                   </tr>
                 ))

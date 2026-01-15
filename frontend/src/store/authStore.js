@@ -78,9 +78,13 @@ const useAuthStore = create((set) => ({
     });
   },
 
-  setCurrentStore: (store) => {
-    localStorage.setItem('currentStoreId', store.storeId);
-    set({ currentStoreId: store.storeId });
+  setCurrentStore: (storeIdOrObject) => {
+    // Accept both storeId (number) or store object
+    const storeId = typeof storeIdOrObject === 'number' 
+      ? storeIdOrObject 
+      : storeIdOrObject.storeId;
+    localStorage.setItem('currentStoreId', storeId);
+    set({ currentStoreId: storeId });
   },
 
   refreshAuth: async () => {
