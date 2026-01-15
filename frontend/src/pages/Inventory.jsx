@@ -5,6 +5,7 @@ import suppliersService from '../services/suppliersService';
 import { productsService } from '../services/productsService';
 import ProductStockHistoryModal from '../components/inventory/ProductStockHistoryModal';
 import StockReceiptDetailModal from '../components/inventory/StockReceiptDetailModal';
+import ProtectedAction from '../components/ProtectedAction';
 
 function Inventory() {
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'receipts'
@@ -184,13 +185,15 @@ function Inventory() {
           <h1 className="text-2xl font-bold text-gray-800">Quản lý Tồn kho</h1>
           <p className="text-gray-600 text-sm mt-1">Theo dõi tồn kho và nhập hàng</p>
         </div>
-        <button
-          onClick={handleOpenStockIn}
-          className="bg-primary-600 hover:bg-primary-700 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <FiPlus />
-          Nhập kho
-        </button>
+        <ProtectedAction action="create" subject="Inventory">
+          <button
+            onClick={handleOpenStockIn}
+            className="bg-primary-600 hover:bg-primary-700 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <FiPlus />
+            Nhập kho
+          </button>
+        </ProtectedAction>
       </div>
 
       {/* Tabs */}
@@ -651,7 +654,7 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   Xác nhận nhập kho
                 </button>

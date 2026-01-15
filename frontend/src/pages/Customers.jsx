@@ -3,6 +3,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiX, FiUser, FiPhone, FiMapPin, FiShoppingCa
 import { useForm } from 'react-hook-form';
 import { customersService } from '../services/customersService';
 import CustomerDetailModal from '../components/customer/CustomerDetailModal';
+import ProtectedAction from '../components/ProtectedAction';
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -83,13 +84,15 @@ export default function Customers() {
           <h1 className="text-3xl font-bold text-gray-900">Khách hàng</h1>
           <p className="text-gray-500 mt-1">Quản lý thông tin khách hàng</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-black rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          <FiPlus />
-          Thêm khách hàng
-        </button>
+        <ProtectedAction action="manage" subject="Customer">
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-black rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <FiPlus />
+            Thêm khách hàng
+          </button>
+        </ProtectedAction>
       </div>
 
       {/* Stats */}
@@ -182,26 +185,30 @@ export default function Customers() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right text-sm">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(customer);
-                        }}
-                        className="text-primary-600 hover:text-primary-700 mr-3"
-                        title="Chỉnh sửa"
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(customer.CustomerID, customer.CustomerName);
-                        }}
-                        className="text-red-600 hover:text-red-700"
-                        title="Xóa"
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <ProtectedAction action="update" subject="Customer">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(customer);
+                          }}
+                          className="text-primary-600 hover:text-primary-700 mr-3"
+                          title="Chỉnh sửa"
+                        >
+                          <FiEdit2 />
+                        </button>
+                      </ProtectedAction>
+                      <ProtectedAction action="delete" subject="Customer">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(customer.CustomerID, customer.CustomerName);
+                          }}
+                          className="text-red-600 hover:text-red-700"
+                          title="Xóa"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </ProtectedAction>
                     </td>
                   </tr>
                 ))
@@ -281,7 +288,7 @@ export default function Customers() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   {editingCustomer ? 'Cập nhật' : 'Thêm mới'}
                 </button>

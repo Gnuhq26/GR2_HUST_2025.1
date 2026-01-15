@@ -11,6 +11,9 @@ import Reports from '../pages/Reports';
 import NoStore from '../pages/NoStore';
 import CreateStore from '../pages/CreateStore';
 import SelectStore from '../pages/SelectStore';
+import StoreSettings from '../pages/StoreSettings';
+import StoreMembers from '../pages/StoreMembers';
+import Roles from '../pages/Roles';
 import MainLayout from '../layouts/MainLayout';
 import useAuthStore from '../store/authStore';
 
@@ -37,6 +40,9 @@ export default function AppRoutes() {
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/store/settings" element={<StoreSettings />} />
+        <Route path="/store/members" element={<StoreMembers />} />
+        <Route path="/store/roles" element={<Roles />} />
       </Route>
 
       {/* Catch all - redirect to login or dashboard */}

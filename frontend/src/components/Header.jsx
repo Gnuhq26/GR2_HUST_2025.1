@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FiUser, FiLogOut, FiChevronDown, FiShoppingBag } from 'react-icons/fi';
 import useAuthStore from '../store/authStore';
 
@@ -6,12 +6,39 @@ export default function Header() {
   const { user, stores, currentStoreId, setCurrentStore, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showStoreMenu, setShowStoreMenu] = useState(false);
+  
+  const userMenuRef = useRef(null);
+  const storeMenuRef = useRef(null);
 
-  const currentStore = stores.find(s => s.storeId === currentStoreId);
+  const currentStore = stores.find(s => s.storeId === parseInt(currentStoreId));
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+      if (storeMenuRef.current && !storeMenuRef.current.contains(event.target)) {
+        setShowStoreMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
+  };
+
+  const handleStoreChange = (store) => {
+    setCurrentStore(store);
+    setShowStoreMenu(false);
+    // Reload page to refresh data for new store
+    window.location.reload();
   };
 
   return (
@@ -34,8 +61,8 @@ export default function Header() {
         {/* Right Section */}
         <div className="flex items-center gap-4">
           {/* Store Selector */}
-          {stores.length > 0 && (
-            <div className="relative">
+          {stores.length > 1 && (
+            <div className="relative" ref={storeMenuRef}>
               <button
                 onClick={() => setShowStoreMenu(!showStoreMenu)}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
@@ -48,20 +75,31 @@ export default function Header() {
               </button>
 
               {showStoreMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-200">
+                    <p className="text-xs font-semibold text-gray-400 uppercase">Chọn cửa hàng</p>
+                  </div>
                   {stores.map((store) => (
                     <button
                       key={store.storeId}
-                      onClick={() => {
-                        setCurrentStore(store.storeId);
-                        setShowStoreMenu(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
-                        store.storeId === currentStoreId ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
+                      onClick={() => handleStoreChange(store)}
+                      className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${
+                        store.storeId === parseInt(currentStoreId) ? 'bg-primary-50' : ''
                       }`}
                     >
-                      <div className="font-medium">{store.storeName}</div>
-                      <div className="text-xs text-gray-500">{store.subdomain}</div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className={`font-medium ${
+                            store.storeId === parseInt(currentStoreId) ? 'text-primary-700' : 'text-gray-900'
+                          }`}>
+                            {store.storeName}
+                          </div>
+                          <div className="text-xs text-gray-500">{store.subdomain}</div>
+                        </div>
+                        {store.storeId === parseInt(currentStoreId) && (
+                          <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                        )}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -70,7 +108,7 @@ export default function Header() {
           )}
 
           {/* User Menu */}
-          <div className="relative">
+          <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors"

@@ -80,7 +80,7 @@ function StockReceiptDetailModal({ receiptId, onClose }) {
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-purple-100 transition-colors"
+              className="text-red-400 hover:text-red-600 transition-colors"
             >
               <FiX className="text-2xl" />
             </button>

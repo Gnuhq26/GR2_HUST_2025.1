@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FiEdit2, FiTrash2, FiPlus, FiTruck, FiPhone, FiMapPin, FiSearch, FiPackage } from 'react-icons/fi';
 import suppliersService from '../services/suppliersService';
+import ProtectedAction from '../components/ProtectedAction';
 
 function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
@@ -119,13 +120,15 @@ function Suppliers() {
           <h1 className="text-2xl font-bold text-gray-800">Quản lý Nhà cung cấp</h1>
           <p className="text-gray-600 text-sm mt-1">Quản lý thông tin nhà cung cấp hàng hóa</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <FiPlus />
-          Thêm nhà cung cấp
-        </button>
+        <ProtectedAction action="create" subject="Supplier">
+          <button
+            onClick={handleCreate}
+            className="bg-primary-600 hover:bg-primary-700 text-black px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <FiPlus />
+            Thêm nhà cung cấp
+          </button>
+        </ProtectedAction>
       </div>
 
       {/* Stats Cards */}
@@ -176,7 +179,7 @@ function Suppliers() {
           </div>
           <button
             type="submit"
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-primary-600 hover:bg-primary-700 text-black px-6 py-2 rounded-lg transition-colors"
           >
             Tìm kiếm
           </button>
@@ -249,18 +252,22 @@ function Suppliers() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(supplier)}
-                      className="text-primary-600 hover:text-primary-900 mr-4 inline-flex items-center gap-1"
-                    >
-                      <FiEdit2 /> Sửa
-                    </button>
-                    <button
-                      onClick={() => handleDelete(supplier)}
-                      className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
-                    >
-                      <FiTrash2 /> Xóa
-                    </button>
+                    <ProtectedAction action="update" subject="Supplier">
+                      <button
+                        onClick={() => handleEdit(supplier)}
+                        className="text-primary-600 hover:text-primary-900 mr-4 inline-flex items-center gap-1"
+                      >
+                        <FiEdit2 /> Sửa
+                      </button>
+                    </ProtectedAction>
+                    <ProtectedAction action="delete" subject="Supplier">
+                      <button
+                        onClick={() => handleDelete(supplier)}
+                        className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
+                      >
+                        <FiTrash2 /> Xóa
+                      </button>
+                    </ProtectedAction>
                   </td>
                 </tr>
               ))
@@ -338,7 +345,7 @@ function Suppliers() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   {isEditing ? 'Cập nhật' : 'Tạo mới'}
                 </button>

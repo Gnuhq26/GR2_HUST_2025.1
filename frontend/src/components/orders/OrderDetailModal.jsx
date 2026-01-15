@@ -104,7 +104,7 @@ function OrderDetailModal({ orderId, onClose }) {
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-white/80 transition-colors"
+              className="text-red-400 hover:text-red-600 transition-colors"
             >
               <FiX className="text-2xl" />
             </button>
