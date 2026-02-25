@@ -1,0 +1,322 @@
+// Database Schema for Multi-Tenant POS System
+// Use this code at https://dbdiagram.io/d
+// Created: January 20, 2026
+
+// ==========================================
+// MULTI-TENANT & AUTHENTICATION
+// ==========================================
+
+Table Store {
+  StoreID int [pk, increment]
+  StoreName varchar(255) [not null]
+  Subdomain varchar(100) [unique, not null, note: 'Unique subdomain for multi-tenant (e.g., abc.pos.com)']
+  Phone varchar(20)
+  Address varchar(500)
+  Status varchar(50) [default: 'Active']
+  CreatedAt timestamp [default: `now()`]
+  
+  Note: 'Main store entity - Root of multi-tenant architecture'
+}
+
+Table User {
+  UserID int [pk, increment]
+  Email varchar(255) [unique, not null]
+  PasswordHash varchar(255) [not null, note: 'bcrypt hashed password']
+  FullName varchar(100)
+  Phone varchar(20)
+  Address varchar(255)
+  CreatedAt timestamp [default: `now()`]
+  
+  Note: 'User can join multiple stores with different roles'
+}
+
+Table StoreUser {
+  StoreID int [pk, ref: > Store.StoreID]
+  UserID int [pk, ref: > User.UserID]
+  RoleID int [ref: > Role.RoleID, note: 'User role in this store']
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Note: 'Many-to-Many relationship between User and Store'
+}
+
+// ==========================================
+// RBAC (Role-Based Access Control)
+// ==========================================
+
+Table Role {
+  RoleID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  RoleName varchar(100) [not null]
+  Description varchar(255)
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    (StoreID, RoleName) [unique, note: 'Role name unique per store']
+  }
+  
+  Note: 'Custom roles per store (Manager, Staff, Accountant, etc.)'
+}
+
+Table Permission {
+  PermissionID int [pk, increment]
+  Action varchar(100) [not null, note: 'create, read, update, delete, manage']
+  Subject varchar(100) [not null, note: 'Product, Order, Customer, all, etc.']
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    (Action, Subject) [unique, note: 'Permission identifier (e.g., create:Product)']
+  }
+  
+  Note: 'Global permissions - Action-Subject pattern'
+}
+
+Table RolePermission {
+  RoleID int [pk, ref: > Role.RoleID]
+  PermissionID int [pk, ref: > Permission.PermissionID]
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Note: 'Grants permissions to roles'
+}
+
+// ==========================================
+// PRODUCT MANAGEMENT
+// ==========================================
+
+Table Category {
+  CategoryID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  CategoryName varchar(255) [not null]
+  Description text
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    (StoreID, CategoryName) [unique, note: 'Category name unique per store']
+  }
+  
+  Note: 'Product categories (Building Materials, Electronics, etc.)'
+}
+
+Table Product {
+  ProductID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  CategoryID int [ref: > Category.CategoryID]
+  ProductName varchar(255) [not null]
+  SKU varchar(50) [note: 'Stock Keeping Unit']
+  BaseUnit varchar(50) [not null, note: 'Base unit for inventory (Viên, Kg, Lít, etc.)']
+  Description text
+  IsActive boolean [default: true]
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    (StoreID, SKU) [unique, note: 'SKU unique per store']
+  }
+  
+  Note: 'Products with multi-unit support'
+}
+
+Table ProductUnit {
+  UnitID int [pk, increment]
+  ProductID int [ref: > Product.ProductID]
+  UnitName varchar(50) [not null, note: 'Pallet, Thùng, Xe, etc.']
+  ExchangeValue decimal(18,3) [not null, note: 'Conversion rate to BaseUnit (e.g., 1 Pallet = 500,000 Viên)']
+  IsDefault boolean [default: false]
+  
+  Note: 'Multi-unit conversion system - All units convert to BaseUnit'
+}
+
+Table PriceList {
+  PriceID int [pk, increment]
+  ProductID int [ref: > Product.ProductID]
+  PriceName varchar(100) [not null, note: 'Giá thợ, Giá lẻ, etc.']
+  UnitName varchar(50) [not null, note: 'Price per unit (Viên, Thùng, etc.)']
+  UnitPrice decimal(18,2) [not null]
+  MinQuantity int [default: 0, note: 'Minimum quantity to apply this price']
+  
+  Note: 'Dynamic pricing - Price varies by unit and quantity'
+}
+
+// ==========================================
+// INVENTORY MANAGEMENT
+// ==========================================
+
+Table Supplier {
+  SupplierID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  SupplierName varchar(255) [not null]
+  Phone varchar(20)
+  Address text
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    (StoreID, SupplierName) [unique, note: 'Supplier name unique per store']
+  }
+  
+  Note: 'Supplier management for stock receipts'
+}
+
+Table Inventory {
+  InventoryID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  ProductID int [ref: > Product.ProductID]
+  Quantity decimal(18,2) [default: 0, note: 'Always stored in BaseUnit']
+  LastUpdated timestamp [default: `now()`]
+  
+  Indexes {
+    (StoreID, ProductID) [unique, note: 'One inventory record per product per store']
+  }
+  
+  Note: 'Real-time inventory tracking - Quantity in BaseUnit only'
+}
+
+Table StockReceipt {
+  ReceiptID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  SupplierID int [ref: > Supplier.SupplierID]
+  ImportDate timestamp [default: `now()`]
+  TotalAmount decimal(18,2) [not null]
+  PaidAmount decimal(18,2) [default: 0, note: 'Amount paid to supplier']
+  Note text
+  CreatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    StoreID
+    SupplierID
+  }
+  
+  Note: 'Stock-in transactions'
+}
+
+Table StockReceiptDetail {
+  DetailID int [pk, increment]
+  ReceiptID int [ref: > StockReceipt.ReceiptID]
+  ProductID int [ref: > Product.ProductID]
+  UnitName varchar(50) [not null, note: 'Unit used for import (may differ from BaseUnit)']
+  Quantity decimal(18,2) [not null, note: 'Quantity in UnitName']
+  UnitPrice decimal(18,2) [not null, note: 'Cost per unit']
+  
+  Indexes {
+    ReceiptID
+    ProductID
+  }
+  
+  Note: 'Stock receipt line items - Auto-converts to BaseUnit for Inventory'
+}
+
+// ==========================================
+// SALES & ORDER MANAGEMENT
+// ==========================================
+
+Table Customer {
+  CustomerID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  CustomerName varchar(255) [not null]
+  Phone varchar(20)
+  Address text
+  CreatedAt timestamp [default: `now()`]
+  UpdatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    StoreID
+  }
+  
+  Note: 'Customer database for sales orders'
+}
+
+Table Order {
+  OrderID int [pk, increment]
+  StoreID int [ref: > Store.StoreID]
+  CustomerID int [ref: > Customer.CustomerID, note: 'NULL for walk-in customers']
+  UserID int [ref: > User.UserID, note: 'Salesperson who created the order']
+  OrderDate timestamp [default: `now()`]
+  TotalAmount decimal(18,2) [not null]
+  PaidAmount decimal(18,2) [default: 0, note: 'Amount paid by customer']
+  Status varchar(50) [default: 'Completed', note: 'Completed, Pending, Cancelled']
+  Note text
+  
+  Indexes {
+    StoreID
+    CustomerID
+    UserID
+  }
+  
+  Note: 'Sales orders - Auto-deducts from Inventory'
+}
+
+Table OrderDetail {
+  DetailID int [pk, increment]
+  OrderID int [ref: > Order.OrderID]
+  ProductID int [ref: > Product.ProductID]
+  UnitName varchar(50) [not null, note: 'Unit sold (Pallet, Thùng, etc.)']
+  Quantity decimal(18,2) [not null, note: 'Quantity in UnitName']
+  UnitPrice decimal(18,2) [not null, note: 'Selling price per unit']
+  CostPrice decimal(18,2) [default: 0, note: 'Cost at time of sale (for profit calculation)']
+  
+  Indexes {
+    OrderID
+    ProductID
+  }
+  
+  Note: 'Order line items - CostPrice snapshot for accurate profit reporting'
+}
+
+// ==========================================
+// REPORTING & AUDIT
+// ==========================================
+
+Table InventoryLog {
+  LogID int [pk, increment]
+  StoreID int
+  ProductID int [ref: > Product.ProductID]
+  ChangeType varchar(50) [not null, note: 'IN (stock-in), OUT (sale), ADJUST, RETURN']
+  ReferenceType varchar(50) [note: 'Order, StockReceipt, Manual']
+  ReferenceID int [note: 'ID of Order or StockReceipt']
+  OldQuantity decimal(18,2) [not null]
+  ChangeQuantity decimal(18,2) [not null, note: 'Positive = increase, Negative = decrease']
+  NewQuantity decimal(18,2) [not null]
+  Note text
+  CreatedBy int [note: 'UserID who made the change']
+  CreatedAt timestamp [default: `now()`]
+  
+  Indexes {
+    StoreID
+    ProductID
+    (ReferenceType, ReferenceID)
+    CreatedAt
+  }
+  
+  Note: 'Audit trail for all inventory changes - Complete transaction history'
+}
+
+// ==========================================
+// RELATIONSHIP SUMMARY
+// ==========================================
+
+// Store Relationships
+Ref: Store.StoreID < Role.StoreID [delete: cascade]
+Ref: Store.StoreID < Category.CategoryID [delete: cascade]
+Ref: Store.StoreID < Product.StoreID [delete: cascade]
+Ref: Store.StoreID < Supplier.StoreID [delete: cascade]
+Ref: Store.StoreID < Inventory.StoreID [delete: cascade]
+Ref: Store.StoreID < Customer.StoreID [delete: cascade]
+Ref: Store.StoreID < Order.StoreID [delete: cascade]
+Ref: Store.StoreID < StockReceipt.StoreID [delete: cascade]
+
+// Product Relationships
+Ref: Product.ProductID < ProductUnit.ProductID [delete: cascade]
+Ref: Product.ProductID < PriceList.ProductID [delete: cascade]
+Ref: Product.ProductID < StockReceiptDetail.ProductID [delete: restrict]
+Ref: Product.ProductID < OrderDetail.ProductID [delete: restrict]
+Ref: Product.ProductID < InventoryLog.ProductID [delete: restrict]
+
+// Order Relationships
+Ref: Order.OrderID < OrderDetail.OrderID [delete: cascade]
+
+// Stock Receipt Relationships
+Ref: StockReceipt.ReceiptID < StockReceiptDetail.ReceiptID [delete: cascade]
