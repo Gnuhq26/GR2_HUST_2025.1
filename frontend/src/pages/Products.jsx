@@ -78,7 +78,7 @@ export default function Products() {
   };
 
   return (
-    <div className="max-w-7xl">
+    <div className="p-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
