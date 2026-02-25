@@ -496,33 +496,52 @@ NODE_ENV=development
 ### Screenshots
 
 #### 1. Trang đăng nhập
+- Trang đăng nhập:
 <p align="center">
   <img src="images/LoginScreen.png" width="800">
 </p>
 
-#### 2. Quản lý sản phẩm với Multi-Unit
-![Product Management](docs/screenshots/products.png)
-*Danh sách sản phẩm với các đơn vị quy đổi*
+- Lựa chọn cửa hàng (khi người dùng thuộc nhiều cửa hàng):
+<p align="center">
+  <img src="images/Select-store.png" width="800">
+</p>
 
-#### 4. Form tạo sản phẩm
-![Create Product](docs/screenshots/create-product.png)
-*Modal tạo sản phẩm mới với units và prices*
+#### 2. Trang Dashboard
+<p align="center">
+  <img src="images/DashboardScreen.png" width="800">
+</p>
 
-#### 5. Nhập kho
-![Stock In](docs/screenshots/stock-in.png)
-*Phiếu nhập kho với tự động quy đổi đơn vị*
+#### 3. Trang Quản lý sản phẩm 
+<p align="center">
+  <img src="images/ProductsScreen.png" width="800">
+</p>
 
-#### 6. Tạo đơn hàng
-![Create Order](docs/screenshots/create-order.png)
-*Form tạo đơn hàng với auto-select giá*
+#### 4. Trang Nhập kho
 
-#### 7. Báo cáo doanh thu
-![Revenue Report](docs/screenshots/revenue-report.png)
-*Biểu đồ doanh thu và lợi nhuận theo thời gian*
+- Danh sách tồn kho:
+<p align="center">
+  <img src="images/Inventory1.png" width="800">
+</p>
 
-#### 8. Phân quyền RBAC
-![Roles & Permissions](docs/screenshots/roles.png)
-*Giao diện phân quyền với Permission Grid*
+- Phiếu nhập kho:
+<p align="center">
+  <img src="images/Inventory2.png" width="800">
+</p>
+
+#### 5. Trang quản lý đơn hàng
+<p align="center">
+  <img src="images/OrdersScreen.png" width="800">
+</p>
+
+#### 6. Báo cáo doanh thu
+<p align="center">
+  <img src="images/ReportsScreen.png" width="800">
+</p>
+
+#### 7. Phân quyền RBAC
+<p align="center">
+  <img src="images/Role-permissionScreen.png" width="800">
+</p>
 
 
 ## TÀI LIỆU THAM KHẢO
@@ -541,6 +560,6 @@ MIT License - Copyright (c) 2026 Bùi Quang Hưng
 
 ---
 
-**📧 Liên hệ**: hung.bq225849@sis.hust.edu.vn  
-**🔗 Repository**: https://github.com/gnuhq26/GR2_HUST_2025.1  
-**📅 Last Updated**: January 20, 2026
+**Liên hệ**: hung.bq225849@sis.hust.edu.vn  
+**Repository**: https://github.com/gnuhq26/GR2_HUST_2025.1  
+**Last Updated**: February 25, 2026
