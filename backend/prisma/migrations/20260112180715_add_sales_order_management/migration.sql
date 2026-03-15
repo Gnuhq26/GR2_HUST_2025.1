@@ -65,12 +65,3 @@ ALTER TABLE `OrderDetail` ADD CONSTRAINT `OrderDetail_OrderID_fkey` FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE `OrderDetail` ADD CONSTRAINT `OrderDetail_ProductID_fkey` FOREIGN KEY (`ProductID`) REFERENCES `Product`(`ProductID`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- RenameIndex
-ALTER TABLE `stockreceipt` RENAME INDEX `StockReceipt_SupplierID_fkey` TO `StockReceipt_SupplierID_idx`;
-
--- RenameIndex
-ALTER TABLE `stockreceiptdetail` RENAME INDEX `StockReceiptDetail_ProductID_fkey` TO `StockReceiptDetail_ProductID_idx`;
-
--- RenameIndex
-ALTER TABLE `stockreceiptdetail` RENAME INDEX `StockReceiptDetail_ReceiptID_fkey` TO `StockReceiptDetail_ReceiptID_idx`;

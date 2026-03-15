@@ -86,11 +86,11 @@ Hệ thống hoạt động trên:
 
 ## HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY THỬ
 
-###  Yêu cầu
+### Yêu cầu hệ thống
 
 - **Node.js**: >= 18.0.0
-- **npm** hoặc **yarn**
-- **MySQL/MariaDB**: >= 8.0 / 10.6
+- **Package Manager**: npm hoặc yarn
+- **Database**: Docker Desktop (khuyến nghị sử dụng để triển khai môi trường nhanh) **hoặc** MySQL/MariaDB (>= 8.0 / 10.6)
 - **Git**
 
 ### Bước 1: Clone Repository
@@ -100,69 +100,94 @@ git clone https://github.com/gnuhq26/GR2_HUST_2025.1.git
 cd GR2_HUST_2025.1
 ```
 
-### Bước 2: Cài đặt Database
+### Bước 2: Thiết lập Cơ sở dữ liệu (Database)
 
-1. Tạo database MySQL:
-```sql
-CREATE DATABASE pos_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+#### Lựa chọn 1: Triển khai bằng Docker (Khuyến nghị)
+
+```bash
+cd backend
+docker compose up -d
 ```
 
-2. Tạo file `.env` trong thư mục `backend`:
+> **Lưu ý:** Container mặc định sử dụng port `3306`. Nếu máy bạn đã cài sẵn MySQL/MariaDB tại port này, vui lòng tắt service local hoặc đổi port mapping trong file `backend/docker-compose.yml` (ví dụ: `3307:3306`), sau đó cập nhật lại thông số port trong `.env`.
+
+#### Lựa chọn 2: Cài đặt trực tiếp (Native)
+Cài đặt MySQL/MariaDB trực tiếp trên máy và khởi tạo một database trống mang tên `gr2_hust`.
+
+### Bước 3: Cấu hình và Khởi chạy Backend
+
+#### 1. Thiết lập biến môi trường
+
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-3. Cấu hình file `.env`:
-```env
-# Database Configuration
-DATABASE_HOST=localhost
-DATABASE_USER=root
-DATABASE_PASSWORD=your_password
-DATABASE_NAME=pos_db
+Mở file `backend/.env` và cập nhật các thông số sau (nếu cần):
 
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+```env
+# Cấu hình Prisma migrations (Sử dụng DATABASE_URL)
+DATABASE_URL="mysql://root:hung1234@127.0.0.1:3306/gr2_hust"
+
+# Cấu hình Runtime & seed (Sử dụng Prisma MariaDB adapter)
+DATABASE_HOST=127.0.0.1
+DATABASE_PORT=3306
+DATABASE_USER=root
+DATABASE_PASSWORD=hung1234
+DATABASE_NAME=gr2_hust
+
+# Cấu hình JWT Auth
+JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=7d
 
-# Server Configuration
+# Cấu hình API Server
 PORT=3000
 ```
+> **Quan trọng:** Nếu bạn cài đặt Database trực tiếp ở *Lựa chọn 2*, hãy đảm bảo thay đổi `DATABASE_USER` và `DATABASE_PASSWORD` khớp với tài khoản CSDL trên máy của bạn.
 
-### Bước 3: Cài đặt Backend
+#### 2. Cài đặt thư viện và Khởi chạy
 
 ```bash
-# Ở thư mục backend/
+# Cài đặt dependencies
 npm install
 
-# Chạy Prisma migrations (tạo tables)
+# Đồng bộ cấu trúc Database
 npx prisma migrate deploy
 
-# (Optional) Seed dữ liệu mẫu
+# Khởi tạo Prisma Client (Bắt buộc)
+npx prisma generate
+
+# (Tuỳ chọn) Đổ dữ liệu mẫu ban đầu (Seed)
 npx prisma db seed
 
-# Khởi động server
+# Khởi động API Server ở chế độ phát triển
 npm run start:dev
 ```
 
-**Kiểm tra:** Mở http://localhost:3000/api để xem Swagger API Documentation
+**Kiểm tra:** Nhấp truy cập [http://localhost:3000/api](http://localhost:3000/api) để xem tài liệu API chi tiết trên Swagger UI.
 
-### Bước 4: Cài đặt Frontend
+### Bước 4: Cấu hình và Khởi chạy Frontend
 
 ```bash
-# Mở terminal mới
+# Mở một terminal mới và di chuyển vào thư mục frontend
 cd frontend
 
 # Cài đặt dependencies
 npm install
 
-# Khởi động dev server
+# Tạo file môi trường từ template
+cp .env.example .env
+
+# (Hãy đảm bảo file frontend/.env cấu hình đúng API endpoint như sau)
+# VITE_API_URL=http://localhost:3000/api
+
+# Khởi động ứng dụng React
 npm run dev
 ```
 
-**Kiểm tra:** Mở http://localhost:5173
+**Kiểm tra:** Truy cập [http://localhost:5173](http://localhost:5173) để trải nghiệm giao diện hệ thống.
 
-### Bước 5: Self Test (Kiểm tra hoạt động)
+### Bước 5: Kịch bản kiểm thử (Self-Test)
 
 #### Test Case 1: Đăng ký và Đăng nhập
 
