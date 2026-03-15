@@ -1,12 +1,12 @@
 -- AlterTable
-ALTER TABLE `order` ADD COLUMN `PaidAmount` DECIMAL(18, 2) NOT NULL DEFAULT 0,
+ALTER TABLE `Order` ADD COLUMN `PaidAmount` DECIMAL(18, 2) NOT NULL DEFAULT 0,
     ADD COLUMN `Status` VARCHAR(50) NOT NULL DEFAULT 'Completed';
 
 -- AlterTable
-ALTER TABLE `orderdetail` ADD COLUMN `CostPrice` DECIMAL(18, 2) NOT NULL DEFAULT 0;
+ALTER TABLE `OrderDetail` ADD COLUMN `CostPrice` DECIMAL(18, 2) NOT NULL DEFAULT 0;
 
 -- AlterTable
-ALTER TABLE `stockreceipt` ADD COLUMN `PaidAmount` DECIMAL(18, 2) NOT NULL DEFAULT 0;
+ALTER TABLE `StockReceipt` ADD COLUMN `PaidAmount` DECIMAL(18, 2) NOT NULL DEFAULT 0;
 
 -- CreateTable
 CREATE TABLE `InventoryLog` (
