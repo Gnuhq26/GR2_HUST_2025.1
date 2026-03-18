@@ -7,7 +7,7 @@ services:
         MARIADB_ROOT_PASSWORD: hung1234
         MARIADB_DATABASE: gr2_hust
       ports:
-        - "3306:3306"
+        - "3307:3306"
       volumes:
         - gr2_db_data:/var/lib/mysql
 
