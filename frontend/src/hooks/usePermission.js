@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import useAuthStore from '../store/authStore';
-import rolesService from '../services/rolesService';
+import { authService } from '../services/authService';
 
 /**
  * Hook to check if current user has a specific permission
@@ -18,7 +18,8 @@ export function usePermission(action, subject) {
       setLoading(true);
       
       // Find current store
-      const currentStore = stores.find(s => s.storeId === parseInt(currentStoreId));
+      const parsedStoreId = Number(currentStoreId);
+      const currentStore = stores.find((s) => s.storeId === parsedStoreId) || stores[0];
       
       if (!currentStore || !currentStore.roleId) {
         setHasPermission(false);
@@ -27,9 +28,8 @@ export function usePermission(action, subject) {
       }
 
       try {
-        // Get role permissions from API
-        // Backend returns array of permission objects directly
-        const permissions = await rolesService.getPermissions(currentStore.roleId);
+        // Get effective permissions of current user in selected store
+        const permissions = await authService.getMyPermissions();
         
         // Check for super admin permission (manage all)
         const isSuperAdmin = permissions.some(
@@ -76,7 +76,8 @@ export function usePermissions() {
       setLoading(true);
       
       // Find current store
-      const currentStore = stores.find(s => s.storeId === parseInt(currentStoreId));
+      const parsedStoreId = Number(currentStoreId);
+      const currentStore = stores.find((s) => s.storeId === parsedStoreId) || stores[0];
       
       if (!currentStore || !currentStore.roleId) {
         setPermissions([]);
@@ -85,7 +86,7 @@ export function usePermissions() {
       }
 
       try {
-        const rolePermissions = await rolesService.getPermissions(currentStore.roleId);
+        const rolePermissions = await authService.getMyPermissions();
         setPermissions(rolePermissions);
       } catch (error) {
         console.error('Error loading permissions:', error);

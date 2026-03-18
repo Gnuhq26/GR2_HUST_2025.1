@@ -1,24 +1,34 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
-import Dashboard from '../pages/Dashboard';
-import Products from '../pages/Products';
-import Categories from '../pages/Categories';
-import Customers from '../pages/Customers';
-import Suppliers from '../pages/Suppliers';
-import Inventory from '../pages/Inventory';
-import Orders from '../pages/Orders';
-import Reports from '../pages/Reports';
 import NoStore from '../pages/NoStore';
 import CreateStore from '../pages/CreateStore';
 import SelectStore from '../pages/SelectStore';
-import StoreSettings from '../pages/StoreSettings';
-import StoreMembers from '../pages/StoreMembers';
-import Roles from '../pages/Roles';
+import Forbidden from '../pages/Forbidden';
 import MainLayout from '../layouts/MainLayout';
+import PermissionRoute from '../components/PermissionRoute';
+import { protectedRoutes } from './protectedRoutes';
 import useAuthStore from '../store/authStore';
 
 export default function AppRoutes() {
   const { isAuthenticated } = useAuthStore();
+
+  const renderProtectedElement = (route) => {
+    const Component = route.component;
+    const element = <Component />;
+
+    if (!route.permission) {
+      return element;
+    }
+
+    return (
+      <PermissionRoute
+        action={route.permission.action}
+        subject={route.permission.subject}
+      >
+        {element}
+      </PermissionRoute>
+    );
+  };
 
   return (
     <Routes>
@@ -29,20 +39,17 @@ export default function AppRoutes() {
       <Route path="/no-store" element={isAuthenticated ? <NoStore /> : <Navigate to="/login" replace />} />
       <Route path="/create-store" element={isAuthenticated ? <CreateStore /> : <Navigate to="/login" replace />} />
       <Route path="/select-store" element={isAuthenticated ? <SelectStore /> : <Navigate to="/login" replace />} />
+      <Route path="/forbidden" element={isAuthenticated ? <Forbidden /> : <Navigate to="/login" replace />} />
 
       {/* Protected Routes with Layout */}
       <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/categories" element={<Categories />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/suppliers" element={<Suppliers />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/store/settings" element={<StoreSettings />} />
-        <Route path="/store/members" element={<StoreMembers />} />
-        <Route path="/store/roles" element={<Roles />} />
+        {protectedRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={renderProtectedElement(route)}
+          />
+        ))}
       </Route>
 
       {/* Catch all - redirect to login or dashboard */}

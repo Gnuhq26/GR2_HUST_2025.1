@@ -15,6 +15,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DebtsModule } from './modules/debts/debts.module';
 import { GlobalJwtAuthGuard } from './common/guards/global-jwt-auth.guard';
+import { PermissionGuard } from './common/guards/permission.guard';
 import { PrismaModule } from './common/prisma';
 
 @Module({
@@ -39,6 +40,10 @@ import { PrismaModule } from './common/prisma';
     {
       provide: APP_GUARD,
       useClass: GlobalJwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionGuard,
     },
   ],
 })

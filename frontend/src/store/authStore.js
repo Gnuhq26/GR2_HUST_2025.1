@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { authService } from '../services/authService';
 
-const useAuthStore = create((set) => ({
+const useAuthStore = create((set, get) => ({
   // State
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
@@ -94,22 +94,32 @@ const useAuthStore = create((set) => ({
       
       // Backend returns flat object: { UserID, Email, FullName, ..., stores: [...] }
       const { stores, ...userData } = data;
+      const safeStores = stores || [];
       
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('stores', JSON.stringify(safeStores));
+
+      const currentStoreId = Number(get().currentStoreId);
+      const hasCurrentStore = Number.isFinite(currentStoreId) && safeStores.some(s => s.storeId === currentStoreId);
       
-      if (stores) {
-        localStorage.setItem('stores', JSON.stringify(stores));
-        set({ stores });
+      let nextCurrentStoreId = null;
+      if (safeStores.length > 0) {
+        nextCurrentStoreId = hasCurrentStore ? currentStoreId : safeStores[0].storeId;
+        localStorage.setItem('currentStoreId', String(nextCurrentStoreId));
+      } else {
+        localStorage.removeItem('currentStoreId');
       }
-      
+
       set({
         user: userData,
+        stores: safeStores,
+        currentStoreId: nextCurrentStoreId,
         isLoading: false,
       });
-      return { success: true, stores: stores || [] };
     } catch (error) {
       set({ isLoading: false });
-      return { success: false };
+      // Nếu không lấy được profile, logout
+      useAuthStore.getState().logout();
     }
   },
 

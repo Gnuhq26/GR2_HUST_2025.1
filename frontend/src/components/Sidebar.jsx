@@ -1,51 +1,26 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  FiHome, 
-  FiShoppingBag, 
-  FiGrid, 
-  FiPackage, 
-  FiShoppingCart, 
-  FiUsers, 
-  FiTruck,
-  FiBarChart2,
-  FiSettings,
-  FiShield
-} from 'react-icons/fi';
+import { FiShoppingBag } from 'react-icons/fi';
 import { useCanPerform } from '../hooks/usePermission';
+import { protectedRoutes } from '../routes/protectedRoutes';
 
 export default function Sidebar() {
   const { canPerform, loading } = useCanPerform();
 
-  // Menu items với quyền tương ứng
-  const menuItems = [
-    { path: '/', icon: FiHome, label: 'Dashboard', permission: null }, // Dashboard accessible to all
-    { path: '/products', icon: FiShoppingBag, label: 'Sản phẩm', permission: { action: 'read', subject: 'Product' } },
-    { path: '/categories', icon: FiGrid, label: 'Danh mục', permission: { action: 'read', subject: 'Category' } },
-    { path: '/inventory', icon: FiPackage, label: 'Nhập kho', permission: { action: 'read', subject: 'Inventory' } },
-    { path: '/orders', icon: FiShoppingCart, label: 'Đơn hàng', permission: { action: 'read', subject: 'Order' } },
-    { path: '/customers', icon: FiUsers, label: 'Khách hàng', permission: { action: 'read', subject: 'Customer' } },
-    { path: '/suppliers', icon: FiTruck, label: 'Nhà cung cấp', permission: { action: 'read', subject: 'Supplier' } },
-    { path: '/reports', icon: FiBarChart2, label: 'Báo cáo', permission: { action: 'read', subject: 'Report' } },
-  ];
+  const canAccessRoute = (route) => {
+    if (!route.permission) return true;
+    if (loading) return false; // Avoid flashing unauthorized items while loading
 
-  const storeMenuItems = [
-    { path: '/store/settings', icon: FiSettings, label: 'Cài đặt', permission: { action: 'read', subject: 'Store' } },
-    { path: '/store/members', icon: FiShield, label: 'Thành viên', permission: { action: 'read', subject: 'User' } },
-    { path: '/store/roles', icon: FiShield, label: 'Vai trò', permission: { action: 'read', subject: 'Role' } },
-  ];
+    return canPerform(route.permission.action, route.permission.subject);
+  };
 
   // Filter menu items based on permissions
-  const visibleMenuItems = menuItems.filter(item => {
-    if (!item.permission) return true; // No permission required
-    if (loading) return true; // Show all while loading
-    return canPerform(item.permission.action, item.permission.subject);
-  });
+  const visibleMenuItems = protectedRoutes
+    .filter((route) => route.menu?.group === 'main')
+    .filter(canAccessRoute);
 
-  const visibleStoreItems = storeMenuItems.filter(item => {
-    if (!item.permission) return true;
-    if (loading) return true;
-    return canPerform(item.permission.action, item.permission.subject);
-  });
+  const visibleStoreItems = protectedRoutes
+    .filter((route) => route.menu?.group === 'store')
+    .filter(canAccessRoute);
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col">
@@ -82,8 +57,8 @@ export default function Sidebar() {
                     }`
                   }
                 >
-                  <item.icon className="text-xl" />
-                  <span>{item.label}</span>
+                  <item.menu.icon className="text-xl" />
+                  <span>{item.menu.label}</span>
                 </NavLink>
               </li>
             ))}
@@ -108,8 +83,8 @@ export default function Sidebar() {
                     }`
                   }
                 >
-                  <item.icon className="text-xl" />
-                  <span>{item.label}</span>
+                  <item.menu.icon className="text-xl" />
+                  <span>{item.menu.label}</span>
                 </NavLink>
               </li>
             ))}
