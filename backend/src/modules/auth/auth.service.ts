@@ -195,6 +195,26 @@ export class AuthService {
     });
   }
 
+  /**
+   * Get effective permissions of a role in current store context.
+   */
+  async getRolePermissions(roleId: number) {
+    const rolePermissions = await this.prisma.rolePermission.findMany({
+      where: { RoleID: roleId },
+      include: {
+        permission: {
+          select: {
+            PermissionID: true,
+            Action: true,
+            Subject: true,
+          },
+        },
+      },
+    });
+
+    return rolePermissions.map((rp) => rp.permission);
+  }
+
   attemp(): string {
     return 'Hello, i am Gnuhq26!';
   }

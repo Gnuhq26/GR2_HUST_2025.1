@@ -12,11 +12,11 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiHeader,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto } from './dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { CurrentStore, StoreInfo } from '../../common/decorators';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -119,6 +119,27 @@ export class AuthController {
   getProfile(@Request() req) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return req.user;
+  }
+
+  @Get('permissions')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get current user permissions in selected store' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current user permissions in current store context',
+    schema: {
+      example: [
+        { PermissionID: 2, Action: 'read', Subject: 'Product' },
+        { PermissionID: 3, Action: 'create', Subject: 'Product' },
+      ],
+    },
+  })
+  async getMyPermissions(@CurrentStore('full') currentStore: StoreInfo | null) {
+    if (!currentStore?.roleId) {
+      return [];
+    }
+
+    return await this.authService.getRolePermissions(currentStore.roleId);
   }
 
   @Public()

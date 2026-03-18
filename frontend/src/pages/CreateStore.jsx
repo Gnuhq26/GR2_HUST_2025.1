@@ -6,7 +6,7 @@ import useAuthStore from '../store/authStore';
 
 function CreateStore() {
   const navigate = useNavigate();
-  const { refreshAuth } = useAuthStore();
+  const { refreshAuth, setCurrentStore } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     storeName: '',
@@ -75,8 +75,16 @@ function CreateStore() {
       setLoading(true);
       await storesService.createStore(formData);
       
-      // Refresh auth to get updated stores list
-      await refreshAuth();
+      // Refresh auth to get updated stores list and set current store
+      const result = await refreshAuth();
+
+      if(result.success && result.stores?.length > 0) {
+        const createdStore = result.stores.find((s) => s.subdomain === formData.subdomain) || result.stores[result.stores.length - 1];
+
+        if(createdStore) {
+          setCurrentStore(createdStore.storeId);
+        }
+      }
       
       alert('Tạo cửa hàng thành công!');
       navigate('/');

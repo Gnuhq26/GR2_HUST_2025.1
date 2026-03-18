@@ -19,6 +19,12 @@ export const authService = {
     return response.data;
   },
 
+  // Lấy quyền hiện tại của user theo store đang chọn
+  getMyPermissions: async () => {
+    const response = await api.get('/auth/permissions');
+    return response.data;
+  },
+
   // Đăng xuất (client-side)
   logout: () => {
     localStorage.removeItem('token');
