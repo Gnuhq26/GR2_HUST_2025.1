@@ -103,11 +103,15 @@ export class OrdersService {
           );
         }
 
-        if (inventory.Quantity.lt(quantityInBaseUnit)) {
+        const availableQty = inventory.Quantity
+          .add(inventory.InTransitQty)
+          .sub(inventory.ReservedQty);
+
+        if (availableQty.lt(quantityInBaseUnit)) {
           throw new BadRequestException(
             `Sản phẩm ${product.ProductName} không đủ tồn kho. ` +
-              `Tồn kho hiện tại: ${inventory.Quantity} ${product.BaseUnit}, ` +
-              `cần: ${quantityInBaseUnit} ${product.BaseUnit}`,
+            `Khả dụng: ${availableQty.toString()} ${product.BaseUnit}, ` +
+            `cần: ${quantityInBaseUnit.toString()} ${product.BaseUnit}`,
           );
         }
 
@@ -157,14 +161,21 @@ export class OrdersService {
         });
 
         // 2.8. Trừ tồn kho
-        await tx.inventory.update({
-          where: {
-            InventoryID: inventory.InventoryID,
-          },
-          data: {
-            Quantity: inventory.Quantity.sub(quantityInBaseUnit),
-          },
-        });
+        const deliveryMethod = createOrderDto.DeliveryMethod ?? 'Immediate';
+
+if (deliveryMethod === 'Reserved') {
+  // Khách gửi kho: tăng ReservedQty, chưa trừ Quantity
+  await tx.inventory.update({
+    where: { InventoryID: inventory.InventoryID },
+            data: { ReservedQty: { increment: quantityInBaseUnit } },
+          });
+        } else {
+          // Immediate hoặc DirectShip: trừ thẳng Quantity
+          await tx.inventory.update({
+            where: { InventoryID: inventory.InventoryID },
+            data: { Quantity: { decrement: quantityInBaseUnit } },
+          });
+        }
       }
 
       // 3. Tạo Order
@@ -180,6 +191,7 @@ export class OrdersService {
             connect: { UserID: userId },
           },
           TotalAmount: totalAmount,
+          DeliveryMethod: createOrderDto.DeliveryMethod ?? 'Immediate',
           Note: createOrderDto.Note || null,
           details: {
             create: orderDetails,

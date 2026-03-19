@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsInt, IsString, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { IsOptional, IsInt, IsString, IsArray, ValidateNested, ArrayMinSize, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order-item.dto';
 
@@ -22,6 +22,19 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString({ message: 'Note phải là chuỗi' })
   Note?: string;
+
+  @ApiProperty({
+    description: 'Phương thức giao hàng',
+    example: 'Immediate',
+    required: false,
+    enum: ['Immediate', 'Reserved', 'DirectShip'],
+  })
+  @IsOptional()
+  @IsString({ message: 'DeliveryMethod phải là chuỗi' })
+  @IsIn(['Immediate', 'Reserved', 'DirectShip'], {
+    message: 'DeliveryMethod chỉ được là Immediate, Reserved hoặc DirectShip',
+  })
+  DeliveryMethod?: 'Immediate' | 'Reserved' | 'DirectShip';
 
   @ApiProperty({
     description: 'Danh sách sản phẩm trong đơn hàng',

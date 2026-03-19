@@ -202,6 +202,8 @@ model Inventory {
   StoreID      Int
   ProductID    Int
   Quantity     Decimal  @db.Decimal(18, 2) @default(0) // Luôn lưu theo đơn vị gốc (BaseUnit)
+  ReservedQty  Decimal  @db.Decimal(18, 2) @default(0) // Số lượng đã đặt nhưng chưa xuất kho (xuất ảo)
+  InTransitQty Decimal  @db.Decimal(18, 2) @default(0) // Số lượng đang trên đường về (tồn ảo)
   LastUpdated  DateTime @updatedAt @db.Timestamp(0)
 
   // Relations
@@ -219,6 +221,7 @@ model StockReceipt {
   ImportDate   DateTime @default(now()) @db.Timestamp(0)
   TotalAmount  Decimal  @db.Decimal(18, 2)
   PaidAmount   Decimal  @db.Decimal(18, 2) @default(0) // Số tiền đã trả cho nhà cung cấp
+  Status       String   @default("Received") @db.VarChar(50)  // THÊM TRẠNG THÁI: Received, Pending
   Note         String?  @db.Text
   CreatedAt    DateTime @default(now()) @db.Timestamp(0)
 
@@ -276,6 +279,8 @@ model Order {
   CustomerID   Int?     // Có thể bán cho khách vãng lai (null)
   UserID       Int      // Nhân viên thực hiện bán hàng
   OrderDate    DateTime @default(now()) @db.Timestamp(0)
+  DeliveryMethod String @default("Immediate") @db.VarChar(50) // Tại quầy, Giao hàng, Nhận tại kho...
+  LinkedReceiptID Int? //FK trỏ tới StockReceipt nếu là giao thẳng
   TotalAmount  Decimal  @db.Decimal(18, 2)
   PaidAmount   Decimal  @db.Decimal(18, 2) @default(0) // Số tiền khách hàng đã trả
   Status       String   @default("Completed") @db.VarChar(50) // Completed, Pending, Cancelled
@@ -320,6 +325,7 @@ model InventoryLog {
   StoreID        Int
   ProductID      Int
   ChangeType     String   @db.VarChar(50) // IN (nhập), OUT (xuất/bán), ADJUST (điều chỉnh), RETURN (trả hàng)
+  QuantityType   String   @db.VarChar(50) // Reserved, InTransit, Physical
   ReferenceType  String?  @db.VarChar(50) // Order, StockReceipt, Manual
   ReferenceID    Int?     // ID của Order hoặc StockReceipt
   OldQuantity    Decimal  @db.Decimal(18, 2)

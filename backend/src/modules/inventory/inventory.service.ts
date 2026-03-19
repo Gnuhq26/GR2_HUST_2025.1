@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma';
 import { CreateStockReceiptDto } from './dto';
+import { DirectShipDto } from './dto/direct-ship.dto';
 
 // Type definitions for transaction processing
 interface ValidatedItem {
@@ -118,6 +119,7 @@ export class InventoryService {
           StoreID: storeId,
           SupplierID: dto.supplierId,
           TotalAmount: totalAmount,
+          Status: dto.status ?? 'Received',
           Note: dto.note,
         },
       });
@@ -157,13 +159,16 @@ export class InventoryService {
           },
         });
 
+        // Phân nhánh theo status
+        const isPending = (dto.status ?? 'Received') === 'Pending';
         if (!inventory) {
           // Tạo mới nếu chưa có
           await tx.inventory.create({
             data: {
               StoreID: storeId,
               ProductID: validated.item.productId,
-              Quantity: validated.quantityInBaseUnit,
+              Quantity: isPending ? 0 : validated.quantityInBaseUnit, // Nếu Pending thì chưa tăng Quantity thực tế, mà sẽ tăng InTransitQty
+              InTransitQty: isPending ? validated.quantityInBaseUnit : 0, // Nếu Pending thì tăng InTransitQty, nếu Received thì không tăng InTransitQty
             },
           });
         } else {
@@ -175,11 +180,9 @@ export class InventoryService {
                 ProductID: validated.item.productId,
               },
             },
-            data: {
-              Quantity: {
-                increment: validated.quantityInBaseUnit,
-              },
-            },
+            data: isPending
+              ? { InTransitQty: { increment: validated.quantityInBaseUnit } }
+              : { Quantity:     { increment: validated.quantityInBaseUnit } },
           });
         }
 
@@ -228,9 +231,6 @@ export class InventoryService {
             ],
           },
         }),
-        ...(lowStockThreshold !== undefined && {
-          Quantity: { lte: lowStockThreshold },
-        }),
       },
       include: {
         product: {
@@ -254,20 +254,36 @@ export class InventoryService {
       },
     });
 
-    return inventories.map((inv) => ({
-      InventoryID: inv.InventoryID,
-      ProductID: inv.ProductID,
-      ProductName: inv.product.ProductName,
-      SKU: inv.product.SKU,
-      BaseUnit: inv.product.BaseUnit,
-      Quantity: inv.Quantity,
-      LastUpdated: inv.LastUpdated,
-      IsActive: inv.product.IsActive,
-      Category: inv.product.category,
-      IsLowStock: lowStockThreshold
-        ? Number(inv.Quantity) <= lowStockThreshold
-        : false,
-    }));
+    const mappedInventories = inventories.map((inv) => {
+      const physical   = Number(inv.Quantity);
+      const reserved   = Number(inv.ReservedQty);
+      const inTransit  = Number(inv.InTransitQty);
+      const available  = physical + inTransit - reserved;
+
+      return {
+        InventoryID: inv.InventoryID,
+        ProductID: inv.ProductID,
+        ProductName: inv.product.ProductName,
+        SKU: inv.product.SKU,
+        BaseUnit: inv.product.BaseUnit,
+        Quantity: physical,
+        ReservedQty: reserved,
+        InTransitQty: inTransit,
+        AvailableQty: available,
+        LastUpdated: inv.LastUpdated,
+        IsActive: inv.product.IsActive,
+        Category: inv.product.category,
+        IsLowStock: lowStockThreshold ? available <= lowStockThreshold : false,
+      };
+    });
+
+    if (lowStockThreshold === undefined) {
+      return mappedInventories;
+    }
+
+    return mappedInventories.filter(
+      (item) => item.AvailableQty <= lowStockThreshold,
+    );
   }
 
   /**
@@ -396,5 +412,110 @@ export class InventoryService {
     }
 
     return receipt;
+  }
+
+  async directShipTransaction(storeId: number, userId: number, dto: DirectShipDto) {
+    return await this.prisma.$transaction(async (tx) => {
+      if (dto.totalQty <= 0 || dto.deliverQty < 0) {
+        throw new BadRequestException('Số lượng không hợp lệ');
+      }
+
+      if (dto.deliverQty > dto.totalQty) {
+        throw new BadRequestException('deliverQty không được lớn hơn totalQty');
+      }
+
+      // 1. Tìm ExchangeValue
+      const product = await tx.product.findFirst({
+        where: { ProductID: dto.productId, StoreID: storeId },
+      });
+      if (!product) throw new NotFoundException('Product not found');
+
+      let exchangeValue = 1;
+      if (dto.unitName !== product.BaseUnit) {
+        const productUnit = await tx.productUnit.findFirst({
+          where: { ProductID: dto.productId, UnitName: dto.unitName },
+        });
+        if (!productUnit) throw new BadRequestException('Unit not found');
+        exchangeValue = Number(productUnit.ExchangeValue);
+      }
+
+      const totalInBase   = dto.totalQty   * exchangeValue;
+      const deliverInBase = dto.deliverQty * exchangeValue;
+      const stockInBase   = totalInBase - deliverInBase; // phần thực vào kho
+
+      // 2. Tạo StockReceipt (toàn bộ hàng, status Received)
+      const receipt = await tx.stockReceipt.create({
+        data: {
+          StoreID: storeId,
+          SupplierID: dto.supplierId,
+          Status: 'Received',
+          TotalAmount: dto.totalQty * dto.importUnitPrice,
+          PaidAmount: 0,
+          Note: dto.note,
+          details: {
+            create: {
+              ProductID: dto.productId,
+              UnitName: dto.unitName,
+              Quantity: dto.totalQty,
+              UnitPrice: dto.importUnitPrice,
+            },
+          },
+        },
+      });
+
+      // 3. Tạo Order (phần giao thẳng)
+      const order = await tx.order.create({
+        data: {
+          StoreID: storeId,
+          UserID: userId,
+          CustomerID: dto.customerId ?? null,
+          DeliveryMethod: 'DirectShip',
+          LinkedReceiptID: receipt.ReceiptID,
+          TotalAmount: dto.deliverQty * dto.saleUnitPrice,
+          PaidAmount: 0,
+          Status: 'Completed',
+          Note: dto.note,
+          details: {
+            create: {
+              ProductID: dto.productId,
+              UnitName: dto.unitName,
+              Quantity: dto.deliverQty,
+              UnitPrice: dto.saleUnitPrice,
+              CostPrice: dto.importUnitPrice,
+            },
+          },
+        },
+      });
+
+      // 4. Chỉ cộng phần dư vào kho (stockInBase, không phải totalInBase)
+      const inventory = await tx.inventory.findUnique({
+        where: { StoreID_ProductID: { StoreID: storeId, ProductID: dto.productId } },
+      });
+
+      const updated = await tx.inventory.upsert({
+        where: { StoreID_ProductID: { StoreID: storeId, ProductID: dto.productId } },
+        create: { StoreID: storeId, ProductID: dto.productId, Quantity: stockInBase },
+        update: { Quantity: { increment: stockInBase } },
+      });
+
+      // 5. Ghi InventoryLog
+      await tx.inventoryLog.create({
+        data: {
+          StoreID: storeId,
+          ProductID: dto.productId,
+          QuantityType: 'Physical',
+          ChangeType: 'IN',
+          ReferenceType: 'DirectShip',
+          ReferenceID: receipt.ReceiptID,
+          OldQuantity: inventory?.Quantity ?? 0,
+          ChangeQuantity: stockInBase,
+          NewQuantity: updated.Quantity,
+          Note: `Giao thẳng ${dto.deliverQty} ${dto.unitName} cho khách, nhập kho ${dto.totalQty - dto.deliverQty} ${dto.unitName}`,
+          CreatedBy: userId,
+        },
+      });
+
+      return { receipt, order, stockAdded: stockInBase };
+    });
   }
 }
