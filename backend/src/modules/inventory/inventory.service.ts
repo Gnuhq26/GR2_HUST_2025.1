@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma';
 import { CreateStockReceiptDto } from './dto';
+import { DirectShipDto } from './dto/direct-ship.dto';
 
 // Type definitions for transaction processing
 interface ValidatedItem {
@@ -118,6 +119,7 @@ export class InventoryService {
           StoreID: storeId,
           SupplierID: dto.supplierId,
           TotalAmount: totalAmount,
+          Status: dto.status ?? 'Received',
           Note: dto.note,
         },
       });
@@ -157,13 +159,19 @@ export class InventoryService {
           },
         });
 
+        // Phân nhánh theo status
+        const isPending = (dto.status ?? 'Received') === 'Pending';
+        const oldPhysical = inventory ? Number(inventory.Quantity) : 0;
+        const oldInTransit = inventory ? Number(inventory.InTransitQty) : 0;
+
         if (!inventory) {
           // Tạo mới nếu chưa có
           await tx.inventory.create({
             data: {
               StoreID: storeId,
               ProductID: validated.item.productId,
-              Quantity: validated.quantityInBaseUnit,
+              Quantity: isPending ? 0 : validated.quantityInBaseUnit,
+              InTransitQty: isPending ? validated.quantityInBaseUnit : 0,
             },
           });
         } else {
@@ -175,13 +183,27 @@ export class InventoryService {
                 ProductID: validated.item.productId,
               },
             },
-            data: {
-              Quantity: {
-                increment: validated.quantityInBaseUnit,
-              },
-            },
+            data: isPending
+              ? { InTransitQty: { increment: validated.quantityInBaseUnit } }
+              : { Quantity:     { increment: validated.quantityInBaseUnit } },
           });
         }
+
+        // Ghi InventoryLog
+        const logOldQty = isPending ? oldInTransit : oldPhysical;
+        await tx.inventoryLog.create({
+          data: {
+            StoreID: storeId,
+            ProductID: validated.item.productId,
+            ChangeType: 'IN',
+            QuantityType: isPending ? 'InTransit' : 'Physical',
+            ReferenceType: 'StockReceipt',
+            ReferenceID: receipt.ReceiptID,
+            OldQuantity: logOldQty,
+            ChangeQuantity: validated.quantityInBaseUnit,
+            NewQuantity: logOldQty + validated.quantityInBaseUnit,
+          },
+        });
 
         details.push({
           ...detail,
@@ -228,9 +250,6 @@ export class InventoryService {
             ],
           },
         }),
-        ...(lowStockThreshold !== undefined && {
-          Quantity: { lte: lowStockThreshold },
-        }),
       },
       include: {
         product: {
@@ -254,20 +273,36 @@ export class InventoryService {
       },
     });
 
-    return inventories.map((inv) => ({
-      InventoryID: inv.InventoryID,
-      ProductID: inv.ProductID,
-      ProductName: inv.product.ProductName,
-      SKU: inv.product.SKU,
-      BaseUnit: inv.product.BaseUnit,
-      Quantity: inv.Quantity,
-      LastUpdated: inv.LastUpdated,
-      IsActive: inv.product.IsActive,
-      Category: inv.product.category,
-      IsLowStock: lowStockThreshold
-        ? Number(inv.Quantity) <= lowStockThreshold
-        : false,
-    }));
+    const mappedInventories = inventories.map((inv) => {
+      const physical   = Number(inv.Quantity);
+      const reserved   = Number(inv.ReservedQty);
+      const inTransit  = Number(inv.InTransitQty);
+      const available  = physical + inTransit - reserved;
+
+      return {
+        InventoryID: inv.InventoryID,
+        ProductID: inv.ProductID,
+        ProductName: inv.product.ProductName,
+        SKU: inv.product.SKU,
+        BaseUnit: inv.product.BaseUnit,
+        Quantity: physical,
+        ReservedQty: reserved,
+        InTransitQty: inTransit,
+        AvailableQty: available,
+        LastUpdated: inv.LastUpdated,
+        IsActive: inv.product.IsActive,
+        Category: inv.product.category,
+        IsLowStock: lowStockThreshold ? available <= lowStockThreshold : false,
+      };
+    });
+
+    if (lowStockThreshold === undefined) {
+      return mappedInventories;
+    }
+
+    return mappedInventories.filter(
+      (item) => item.AvailableQty <= lowStockThreshold,
+    );
   }
 
   /**
@@ -396,5 +431,214 @@ export class InventoryService {
     }
 
     return receipt;
+  }
+
+  async directShipTransaction(storeId: number, userId: number, dto: DirectShipDto) {
+    return await this.prisma.$transaction(async (tx) => {
+      if (dto.totalQty <= 0 || dto.deliverQty < 0) {
+        throw new BadRequestException('Số lượng không hợp lệ');
+      }
+
+      if (dto.deliverQty > dto.totalQty) {
+        throw new BadRequestException('deliverQty không được lớn hơn totalQty');
+      }
+
+      // 1. Tìm ExchangeValue
+      const product = await tx.product.findFirst({
+        where: { ProductID: dto.productId, StoreID: storeId },
+      });
+      if (!product) throw new NotFoundException('Product not found');
+
+      let exchangeValue = 1;
+      if (dto.unitName !== product.BaseUnit) {
+        const productUnit = await tx.productUnit.findFirst({
+          where: { ProductID: dto.productId, UnitName: dto.unitName },
+        });
+        if (!productUnit) throw new BadRequestException('Unit not found');
+        exchangeValue = Number(productUnit.ExchangeValue);
+      }
+
+      const totalInBase   = dto.totalQty   * exchangeValue;
+      const deliverInBase = dto.deliverQty * exchangeValue;
+      const stockInBase   = totalInBase - deliverInBase; // phần thực vào kho
+
+      // 2. Tạo StockReceipt (toàn bộ hàng, status Received)
+      const receipt = await tx.stockReceipt.create({
+        data: {
+          StoreID: storeId,
+          SupplierID: dto.supplierId,
+          Status: 'Received',
+          TotalAmount: dto.totalQty * dto.importUnitPrice,
+          PaidAmount: 0,
+          Note: dto.note,
+          details: {
+            create: {
+              ProductID: dto.productId,
+              UnitName: dto.unitName,
+              Quantity: dto.totalQty,
+              UnitPrice: dto.importUnitPrice,
+            },
+          },
+        },
+      });
+
+      // 3. Tạo Order (phần giao thẳng)
+      const order = await tx.order.create({
+        data: {
+          StoreID: storeId,
+          UserID: userId,
+          CustomerID: dto.customerId ?? null,
+          DeliveryMethod: 'DirectShip',
+          LinkedReceiptID: receipt.ReceiptID,
+          TotalAmount: dto.deliverQty * dto.saleUnitPrice,
+          PaidAmount: 0,
+          Status: 'Completed',
+          Note: dto.note,
+          details: {
+            create: {
+              ProductID: dto.productId,
+              UnitName: dto.unitName,
+              Quantity: dto.deliverQty,
+              UnitPrice: dto.saleUnitPrice,
+              CostPrice: dto.importUnitPrice,
+            },
+          },
+        },
+      });
+
+      // 4. Chỉ cộng phần dư vào kho (stockInBase, không phải totalInBase)
+      const inventory = await tx.inventory.findUnique({
+        where: { StoreID_ProductID: { StoreID: storeId, ProductID: dto.productId } },
+      });
+
+      const updated = await tx.inventory.upsert({
+        where: { StoreID_ProductID: { StoreID: storeId, ProductID: dto.productId } },
+        create: { StoreID: storeId, ProductID: dto.productId, Quantity: stockInBase },
+        update: { Quantity: { increment: stockInBase } },
+      });
+
+      // 5. Ghi InventoryLog
+      await tx.inventoryLog.create({
+        data: {
+          StoreID: storeId,
+          ProductID: dto.productId,
+          QuantityType: 'Physical',
+          ChangeType: 'IN',
+          ReferenceType: 'DirectShip',
+          ReferenceID: receipt.ReceiptID,
+          OldQuantity: inventory?.Quantity ?? 0,
+          ChangeQuantity: stockInBase,
+          NewQuantity: updated.Quantity,
+          Note: `Giao thẳng ${dto.deliverQty} ${dto.unitName} cho khách, nhập kho ${dto.totalQty - dto.deliverQty} ${dto.unitName}`,
+          CreatedBy: userId,
+        },
+      });
+
+      return { receipt, order, stockAdded: stockInBase };
+    });
+  }
+
+  /**
+   * Xác nhận nhập kho: chuyển StockReceipt từ Pending → Received
+   * Logic:
+   * 1. Kiểm tra phiếu thuộc store, đang Pending
+   * 2. Với từng item: giảm InTransitQty, tăng Quantity (trong một update)
+   * 3. Ghi InventoryLog x2 cho mỗi item (InTransit ↓ và Physical ↑)
+   * 4. Cập nhật Status = Received
+   */
+  async fulfillReceipt(storeId: number, receiptId: number, userId: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Tìm phiếu nhập, kiểm tra thuộc store và đang Pending
+      const receipt = await tx.stockReceipt.findFirst({
+        where: { ReceiptID: receiptId, StoreID: storeId },
+        include: { details: true, supplier: true },
+      });
+
+      if (!receipt) {
+        throw new NotFoundException('Phiếu nhập không tồn tại trong cửa hàng này');
+      }
+
+      if (receipt.Status !== 'Pending') {
+        throw new BadRequestException(
+          `Phiếu nhập đang ở trạng thái "${receipt.Status}", chỉ có thể xác nhận phiếu Pending`,
+        );
+      }
+
+      // 2. Xử lý từng item: chuyển InTransit → Physical
+      for (const detail of receipt.details) {
+        const product = await tx.product.findUnique({
+          where: { ProductID: detail.ProductID },
+          select: {
+            BaseUnit: true,
+            units: { select: { UnitName: true, ExchangeValue: true } },
+          },
+        });
+
+        let exchangeValue = 1;
+        if (product && detail.UnitName !== product.BaseUnit) {
+          const unit = product.units.find((u) => u.UnitName === detail.UnitName);
+          if (unit) exchangeValue = Number(unit.ExchangeValue);
+        }
+
+        const quantityInBase = Number(detail.Quantity) * exchangeValue;
+
+        const inventory = await tx.inventory.findUnique({
+          where: { StoreID_ProductID: { StoreID: storeId, ProductID: detail.ProductID } },
+        });
+
+        if (!inventory) continue;
+
+        const oldInTransit = Number(inventory.InTransitQty);
+        const oldPhysical = Number(inventory.Quantity);
+
+        await tx.inventory.update({
+          where: { StoreID_ProductID: { StoreID: storeId, ProductID: detail.ProductID } },
+          data: {
+            InTransitQty: { decrement: quantityInBase },
+            Quantity: { increment: quantityInBase },
+          },
+        });
+
+        // Ghi log x2: giảm InTransit và tăng Physical
+        await tx.inventoryLog.createMany({
+          data: [
+            {
+              StoreID: storeId,
+              ProductID: detail.ProductID,
+              ChangeType: 'IN',
+              QuantityType: 'InTransit',
+              ReferenceType: 'StockReceipt',
+              ReferenceID: receiptId,
+              OldQuantity: oldInTransit,
+              ChangeQuantity: -quantityInBase,
+              NewQuantity: oldInTransit - quantityInBase,
+              CreatedBy: userId,
+            },
+            {
+              StoreID: storeId,
+              ProductID: detail.ProductID,
+              ChangeType: 'IN',
+              QuantityType: 'Physical',
+              ReferenceType: 'StockReceipt',
+              ReferenceID: receiptId,
+              OldQuantity: oldPhysical,
+              ChangeQuantity: quantityInBase,
+              NewQuantity: oldPhysical + quantityInBase,
+              CreatedBy: userId,
+            },
+          ],
+        });
+      }
+
+      // 3. Cập nhật trạng thái phiếu nhập
+      return await tx.stockReceipt.update({
+        where: { ReceiptID: receiptId },
+        data: { Status: 'Received' },
+        include: {
+          supplier: { select: { SupplierID: true, SupplierName: true } },
+          details: true,
+        },
+      });
+    });
   }
 }
