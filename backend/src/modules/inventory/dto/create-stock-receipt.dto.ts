@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsString, IsOptional, IsArray, ValidateNested, Min } from 'class-validator';
+import { IsInt, IsNumber, IsString, IsOptional, IsArray, ValidateNested, Min, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -36,6 +36,16 @@ export class CreateStockReceiptDto {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @ApiPropertyOptional({
+    example: 'Received',
+    description: 'Trạng thái phiếu nhập (Pending: hàng đang về, Received: đã nhập kho)',
+    enum: ['Pending', 'Received'],
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['Pending', 'Received'])
+  status?: 'Pending' | 'Received';
 
   @ApiProperty({
     type: [StockReceiptItemDto],

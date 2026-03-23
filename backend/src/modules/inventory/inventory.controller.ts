@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { InventoryService } from './inventory.service';
 import { CreateStockReceiptDto } from './dto';
+import { DirectShipDto } from './dto/direct-ship.dto';
 import { CheckPermission, CurrentStore } from '../../common/decorators';
 
 @ApiTags('Inventory')
@@ -148,5 +150,20 @@ export class InventoryController {
       storeId,
       receiptId,
     );
+  }
+
+  @Post('direct-ship')
+  @CheckPermission('create', 'Inventory')
+  @ApiOperation({
+    summary: 'Nhập giao thẳng: nhập một phần, bán trực tiếp một phần',
+  })
+  @ApiResponse({ status: 201, description: 'Xử lý direct ship thành công' })
+  async directShip(
+    @CurrentStore() storeId: number,
+    @Req() req: any,
+    @Body() dto: DirectShipDto,
+  ) {
+    const userId = req.user.UserID;
+    return await this.inventoryService.directShipTransaction(storeId, userId, dto);
   }
 }
