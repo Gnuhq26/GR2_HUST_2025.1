@@ -19,9 +19,9 @@ export class DirectShipDto {
   @Min(0.01)
   totalQty!: number;
 
-  @ApiProperty({ example: 8, description: 'Phần giao thẳng cho khách' })
+  @ApiProperty({ example: 8, description: 'Phần giao thẳng cho khách (phải > 0 và <= totalQty)' })
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   deliverQty!: number;
 
   @ApiProperty({ example: 120000, description: 'Giá nhập theo đơn vị' })

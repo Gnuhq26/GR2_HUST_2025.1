@@ -24,17 +24,17 @@ export class CreateOrderDto {
   Note?: string;
 
   @ApiProperty({
-    description: 'Phương thức giao hàng',
+    description: 'Phương thức giao hàng. DirectShip chỉ áp dụng qua POST /inventory/direct-ship',
     example: 'Immediate',
     required: false,
-    enum: ['Immediate', 'Reserved', 'DirectShip'],
+    enum: ['Immediate', 'Reserved'],
   })
   @IsOptional()
   @IsString({ message: 'DeliveryMethod phải là chuỗi' })
-  @IsIn(['Immediate', 'Reserved', 'DirectShip'], {
-    message: 'DeliveryMethod chỉ được là Immediate, Reserved hoặc DirectShip',
+  @IsIn(['Immediate', 'Reserved'], {
+    message: 'DeliveryMethod chỉ được là Immediate hoặc Reserved. Để giao thẳng dùng POST /inventory/direct-ship',
   })
-  DeliveryMethod?: 'Immediate' | 'Reserved' | 'DirectShip';
+  DeliveryMethod?: 'Immediate' | 'Reserved';
 
   @ApiProperty({
     description: 'Danh sách sản phẩm trong đơn hàng',

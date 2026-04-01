@@ -166,4 +166,23 @@ export class InventoryController {
     const userId = req.user.UserID;
     return await this.inventoryService.directShipTransaction(storeId, userId, dto);
   }
+
+  @Post('receipts/:receiptId/receive')
+  @CheckPermission('create', 'Inventory')
+  @ApiOperation({
+    summary: 'Xác nhận nhận hàng: chuyển phiếu nhập từ Pending → Received (cần quyền create:Inventory)',
+    description:
+      'Khi hàng về thực tế, chuyển InTransitQty → Quantity. Chỉ áp dụng cho phiếu đang Pending.',
+  })
+  @ApiResponse({ status: 201, description: 'Xác nhận thành công, hàng đã vào kho thực tế' })
+  @ApiResponse({ status: 400, description: 'Phiếu không ở trạng thái Pending' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy phiếu nhập' })
+  async fulfillReceipt(
+    @CurrentStore() storeId: number,
+    @Req() req: any,
+    @Param('receiptId', ParseIntPipe) receiptId: number,
+  ) {
+    const userId = req.user.UserID;
+    return await this.inventoryService.fulfillReceipt(storeId, receiptId, userId);
+  }
 }
