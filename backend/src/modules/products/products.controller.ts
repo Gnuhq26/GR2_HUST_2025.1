@@ -120,9 +120,12 @@ export class ProductsController {
     },
   })
   async calculateBaseUnit(
+    @CurrentStore() storeId: number,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { unitName: string; quantity: number },
   ) {
+    // Kiểm tra product thuộc store trước khi tính
+    await this.productsService.findOne(storeId, id);
     const baseQuantity = await this.productsService.calculateBaseUnitQuantity(
       id,
       body.unitName,

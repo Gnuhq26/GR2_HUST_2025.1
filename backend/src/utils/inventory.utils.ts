@@ -3,30 +3,27 @@ import { PrismaService } from '../common/prisma';
 /**
  * Utility function để đảm bảo một product có bản ghi Inventory
  * Tạo mới nếu chưa tồn tại với Quantity = 0
+ * Sử dụng upsert để tránh race condition khi 2 request đồng thời
  */
 export async function ensureInventoryExists(
   prisma: PrismaService,
   storeId: number,
   productId: number,
 ): Promise<void> {
-  const existing = await prisma.inventory.findUnique({
+  await prisma.inventory.upsert({
     where: {
       StoreID_ProductID: {
         StoreID: storeId,
         ProductID: productId,
       },
     },
+    update: {}, // Không cập nhật gì nếu đã tồn tại
+    create: {
+      StoreID: storeId,
+      ProductID: productId,
+      Quantity: 0,
+    },
   });
-
-  if (!existing) {
-    await prisma.inventory.create({
-      data: {
-        StoreID: storeId,
-        ProductID: productId,
-        Quantity: 0,
-      },
-    });
-  }
 }
 
 /**

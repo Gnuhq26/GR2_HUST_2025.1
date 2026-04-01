@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   CanActivate,
   ExecutionContext,
@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { PrismaService } from '../prisma';
 import {
   CHECK_PERMISSION_KEY,
@@ -13,14 +14,22 @@ import {
 } from '../decorators/check-permission.decorator';
 import { StoreInfo } from '../decorators/current-store.decorator';
 
+interface AuthenticatedUser {
+  stores?: StoreInfo[];
+}
+
 /**
  * Permission Guard for Role-Based Access Control (RBAC)
- * 
+ *
  * This guard checks if the current user has the required permission
- * in the current store based on their role
- * 
- * Usage: Add @CheckPermission(action, subject) decorator to routes
- * Requires: User must be authenticated and have a valid store context
+ * in the current store based on their role.
+ *
+ * NOTE: user.stores is populated fresh from DB on every request via
+ * JwtStrategy.validate() which queries the StoreUser table — so roleId
+ * is always up-to-date; no stale JWT data issue.
+ *
+ * Usage: Add @CheckPermission(action, subject) decorator to routes.
+ * Requires: User must be authenticated and have a valid store context.
  */
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -41,8 +50,10 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    // Passport types request.user as Express.User; cast to our augmented type
+    // to access stores (populated fresh from DB by JwtStrategy.validate)
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = (request as Request & { user?: AuthenticatedUser }).user;
 
     // Ensure user is authenticated
     if (!user) {
@@ -50,8 +61,8 @@ export class PermissionGuard implements CanActivate {
     }
 
     // Get current store from headers
-    const storeIdHeader = request.headers['x-store-id'];
-    const subdomainHeader = request.headers['x-subdomain'];
+    const storeIdHeader = request.headers['x-store-id'] as string | undefined;
+    const subdomainHeader = request.headers['x-subdomain'] as string | undefined;
 
     if (!storeIdHeader && !subdomainHeader) {
       throw new ForbiddenException(
@@ -59,18 +70,15 @@ export class PermissionGuard implements CanActivate {
       );
     }
 
-    // Find the store from user's stores
-    let currentStore: StoreInfo | undefined = undefined;
+    // Find the store from user.stores (loaded fresh from DB by JwtStrategy)
+    const stores: StoreInfo[] = user.stores ?? [];
+    let currentStore: StoreInfo | undefined;
 
     if (storeIdHeader) {
-      const storeId = parseInt(storeIdHeader as string, 10);
-      currentStore = user.stores?.find(
-        (s: StoreInfo) => s.storeId === storeId,
-      );
+      const storeId = parseInt(storeIdHeader, 10);
+      currentStore = stores.find((s) => s.storeId === storeId);
     } else if (subdomainHeader) {
-      currentStore = user.stores?.find(
-        (s: StoreInfo) => s.subdomain === subdomainHeader,
-      );
+      currentStore = stores.find((s) => s.subdomain === subdomainHeader);
     }
 
     if (!currentStore) {
@@ -79,7 +87,7 @@ export class PermissionGuard implements CanActivate {
       );
     }
 
-    // Check if user has the required permission
+    // Check if user has the required permission using current roleId from DB
     const hasPermission = await this.checkPermission(
       currentStore.roleId,
       requiredPermission.action,
@@ -92,15 +100,15 @@ export class PermissionGuard implements CanActivate {
       );
     }
 
-    // Store the current store in request for later use
-    request.currentStore = currentStore;
+    // Attach resolved store to request for use by @CurrentStore() decorator
+    (request as Request & { currentStore?: StoreInfo }).currentStore = currentStore;
 
     return true;
   }
 
   /**
-   * Check if role has specific permission
-   * Also checks for 'manage all' super admin permission
+   * Check if role has specific permission.
+   * Also checks for 'manage all' super admin permission.
    */
   private async checkPermission(
     roleId: number,
@@ -119,7 +127,7 @@ export class PermissionGuard implements CanActivate {
     });
 
     if (superAdminPermission) {
-      return true; // Super admin has all permissions
+      return true;
     }
 
     // Check for specific permission

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma';
 import { CreateProductDto, UpdateProductDto } from './dto';
 import { ensureInventoryExists } from '../../utils';
@@ -281,10 +281,31 @@ export class ProductsService {
 
   /**
    * Xóa vĩnh viễn sản phẩm
+   * Kiểm tra không có dữ liệu tham chiếu trước khi xóa
    */
   async hardDelete(storeId: number, productId: number) {
     // Kiểm tra sản phẩm có tồn tại không
     await this.findOne(storeId, productId);
+
+    // Kiểm tra sản phẩm có trong đơn hàng nào không
+    const orderCount = await this.prisma.orderDetail.count({
+      where: { ProductID: productId },
+    });
+    if (orderCount > 0) {
+      throw new BadRequestException(
+        `Không thể xóa vĩnh viễn: sản phẩm đang được tham chiếu bởi ${orderCount} chi tiết đơn hàng. Hãy dùng soft delete thay thế.`,
+      );
+    }
+
+    // Kiểm tra sản phẩm có trong phiếu nhập nào không
+    const receiptCount = await this.prisma.stockReceiptDetail.count({
+      where: { ProductID: productId },
+    });
+    if (receiptCount > 0) {
+      throw new BadRequestException(
+        `Không thể xóa vĩnh viễn: sản phẩm đang được tham chiếu bởi ${receiptCount} chi tiết phiếu nhập. Hãy dùng soft delete thay thế.`,
+      );
+    }
 
     return await this.prisma.product.delete({
       where: { ProductID: productId },

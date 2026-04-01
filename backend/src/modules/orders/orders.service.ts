@@ -21,6 +21,8 @@ export class OrdersService {
     createOrderDto: CreateOrderDto,
   ) {
     return this.prisma.$transaction(async (tx) => {
+      // Lock: đọc tồn kho trước, tránh race condition giữa các đơn đồng thời
+      // (Serializable isolation đảm bảo không có phantom read)
       // 1. Kiểm tra Customer nếu có
       if (createOrderDto.CustomerID) {
         const customer = await tx.customer.findFirst({
@@ -121,6 +123,17 @@ export class OrdersService {
             `Khả dụng: ${availableQty.toString()} ${product.BaseUnit}, ` +
             `cần: ${quantityInBaseUnit.toString()} ${product.BaseUnit}`,
           );
+        }
+
+        // Kiểm tra thêm: nếu xuất Immediate, physical qty phải đủ
+        if ((createOrderDto.DeliveryMethod ?? 'Immediate') === 'Immediate') {
+          if (inventory.Quantity.lt(quantityInBaseUnit)) {
+            throw new BadRequestException(
+              `Sản phẩm ${product.ProductName} không đủ tồn kho thực tế để xuất ngay. ` +
+              `Tồn thực: ${inventory.Quantity.toString()} ${product.BaseUnit}, ` +
+              `cần: ${quantityInBaseUnit.toString()} ${product.BaseUnit}`,
+            );
+          }
         }
 
         // 2.5. Xác định đơn giá từ PriceList (theo UnitName và tier MinQuantity)
@@ -288,7 +301,7 @@ export class OrdersService {
       }
 
       return order;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   /**

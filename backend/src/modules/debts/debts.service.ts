@@ -216,9 +216,12 @@ export class DebtsService {
   async recordPayment(storeId: number, dto: RecordPaymentDto) {
     const { type, referenceId, amount, note } = dto;
 
+    // Sử dụng transaction để tránh race condition
+    // (2 request thanh toán đồng thời có thể vượt quá số nợ)
+    return this.prisma.$transaction(async (tx) => {
     if (type === 'customer') {
       // Thanh toán từ khách hàng (thu tiền)
-      const order = await this.prisma.order.findFirst({
+      const order = await tx.order.findFirst({
         where: {
           OrderID: referenceId,
           StoreID: storeId,
@@ -244,7 +247,7 @@ export class DebtsService {
       }
 
       // Cập nhật PaidAmount
-      const updatedOrder = await this.prisma.order.update({
+      const updatedOrder = await tx.order.update({
         where: { OrderID: referenceId },
         data: {
           PaidAmount: {
@@ -268,7 +271,7 @@ export class DebtsService {
       };
     } else {
       // Thanh toán cho nhà cung cấp (trả tiền)
-      const receipt = await this.prisma.stockReceipt.findFirst({
+      const receipt = await tx.stockReceipt.findFirst({
         where: {
           ReceiptID: referenceId,
           StoreID: storeId,
@@ -294,7 +297,7 @@ export class DebtsService {
       }
 
       // Cập nhật PaidAmount
-      const updatedReceipt = await this.prisma.stockReceipt.update({
+      const updatedReceipt = await tx.stockReceipt.update({
         where: { ReceiptID: referenceId },
         data: {
           PaidAmount: {
@@ -317,5 +320,6 @@ export class DebtsService {
         note,
       };
     }
+    }); // end transaction
   }
 }
