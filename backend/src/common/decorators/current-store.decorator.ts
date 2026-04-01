@@ -1,4 +1,17 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { Request } from 'express';
+
+export interface StoreInfo {
+  storeId: number;
+  storeName: string;
+  subdomain: string;
+  roleId: number;
+  roleName: string;
+}
+
+interface AuthenticatedUser {
+  stores?: StoreInfo[];
+}
 
 /**
  * Decorator to extract current store information from request
@@ -20,12 +33,12 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
  */
 export const CurrentStore = createParamDecorator(
   (data: 'id' | 'full' | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
-    const user = request.user;
+    const request = ctx.switchToHttp().getRequest<Request>();
+    const user = (request as Request & { user?: AuthenticatedUser }).user;
 
     // Get store identifier from headers
-    const storeIdHeader = request.headers['x-store-id'];
-    const subdomainHeader = request.headers['x-subdomain'];
+    const storeIdHeader = request.headers['x-store-id'] as string | undefined;
+    const subdomainHeader = request.headers['x-subdomain'] as string | undefined;
 
     if (!user?.stores || user.stores.length === 0) {
       return null;
@@ -35,7 +48,7 @@ export const CurrentStore = createParamDecorator(
 
     // Priority 1: Find by store ID from header
     if (storeIdHeader) {
-      const storeId = parseInt(storeIdHeader as string, 10);
+      const storeId = parseInt(storeIdHeader, 10);
       currentStore = user.stores.find(
         (s: StoreInfo) => s.storeId === storeId,
       );
@@ -48,29 +61,21 @@ export const CurrentStore = createParamDecorator(
       );
     }
 
-    // Priority 3: Use first store if no header specified
+    // Không tự động fallback sang store đầu tiên - yêu cầu chỉ định rõ ràng
     if (!currentStore) {
-      currentStore = user.stores[0];
+      return null;
     }
 
     // Return based on requested data
     if (data === 'id') {
-      return currentStore?.storeId || null;
+      return currentStore.storeId;
     }
 
     if (data === 'full') {
-      return currentStore || null;
+      return currentStore;
     }
 
     // Default: return store ID
-    return currentStore?.storeId || null;
+    return currentStore.storeId;
   },
 );
-
-export interface StoreInfo {
-  storeId: number;
-  storeName: string;
-  subdomain: string;
-  roleId: number;
-  roleName: string;
-}

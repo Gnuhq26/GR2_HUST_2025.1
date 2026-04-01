@@ -586,7 +586,33 @@ export class InventoryService {
           where: { StoreID_ProductID: { StoreID: storeId, ProductID: detail.ProductID } },
         });
 
-        if (!inventory) continue;
+        // Nếu chưa có inventory record, tạo mới rồi chuyển
+        if (!inventory) {
+          await tx.inventory.create({
+            data: {
+              StoreID: storeId,
+              ProductID: detail.ProductID,
+              Quantity: quantityInBase,
+              InTransitQty: 0,
+            },
+          });
+
+          await tx.inventoryLog.create({
+            data: {
+              StoreID: storeId,
+              ProductID: detail.ProductID,
+              ChangeType: 'IN',
+              QuantityType: 'Physical',
+              ReferenceType: 'StockReceipt',
+              ReferenceID: receiptId,
+              OldQuantity: 0,
+              ChangeQuantity: quantityInBase,
+              NewQuantity: quantityInBase,
+              CreatedBy: userId,
+            },
+          });
+          continue;
+        }
 
         const oldInTransit = Number(inventory.InTransitQty);
         const oldPhysical = Number(inventory.Quantity);
