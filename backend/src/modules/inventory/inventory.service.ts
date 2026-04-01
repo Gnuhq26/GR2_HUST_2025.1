@@ -164,6 +164,8 @@ export class InventoryService {
         const oldPhysical = inventory ? Number(inventory.Quantity) : 0;
         const oldInTransit = inventory ? Number(inventory.InTransitQty) : 0;
 
+        // Phân nhánh theo status
+        const isPending = (dto.status ?? 'Received') === 'Pending';
         if (!inventory) {
           // Tạo mới nếu chưa có
           await tx.inventory.create({
